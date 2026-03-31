@@ -1,0 +1,65 @@
+@import "tailwindcss";
+
+@theme {
+  --color-md-background: #FFFBFE;
+  --color-md-on-background: #1C1B1F;
+  --color-md-primary: #6750A4;
+  --color-md-on-primary: #FFFFFF;
+  --color-md-secondary-container: #E8DEF8;
+  --color-md-on-secondary-container: #1D192B;
+  --color-md-tertiary: #7D5260;
+  --color-md-on-tertiary: #FFFFFF;
+  --color-md-surface-container: #F3EDF7;
+  --color-md-surface-container-low: #E7E0EC;
+  --color-md-outline: #79747E;
+  --color-md-on-surface-variant: #49454F;
+  --color-md-error: #B3261E;
+
+  --font-roboto: 'Roboto', sans-serif;
+
+  --border-radius-xs: 0.5rem;
+  --border-radius-sm: 0.75rem;
+  --border-radius-md: 1rem;
+  --border-radius-lg: 1.5rem;
+  --border-radius-xl: 1.75rem;
+  --border-radius-2xl: 2rem;
+  --border-radius-3xl: 3rem;
+  --border-radius-full: 9999px;
+
+  --ease-md: cubic-bezier(0.2, 0, 0, 1);
+}
+
+@layer base {
+  html {
+    font-family: var(--font-roboto);
+    background-color: var(--color-md-background);
+    color: var(--color-md-on-background);
+  }
+  
+  body {
+    @apply antialiased tracking-normal;
+  }
+}
+
+@layer components {
+  .md-elevation-1 {
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  }
+  .md-elevation-2 {
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  }
+  .md-elevation-3 {
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  }
+  
+  @media print {
+    body {
+      background-color: #ffffff !important;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    @page {
+      margin: 1cm;
+    }
+  }
+}
