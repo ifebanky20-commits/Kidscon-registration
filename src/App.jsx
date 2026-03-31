@@ -6,6 +6,8 @@ import RegistrationPage from './pages/RegistrationPage';
 import ConfirmationPage from './pages/ConfirmationPage';
 import AdminDashboard from './pages/AdminDashboard';
 import SchoolDetailPage from './pages/SchoolDetailPage';
+import AdminSchoolsPage from './pages/AdminSchoolsPage';
+import AdminStudentsPage from './pages/AdminStudentsPage';
 import PrintLayoutPage from './pages/PrintLayoutPage';
 import AdminLoginPage from './pages/AdminLoginPage';
 import ProtectedRoute from './components/layout/ProtectedRoute';
@@ -31,8 +33,8 @@ function App() {
       }>
         <Route index element={<AdminDashboard />} />
         <Route path="school/:id" element={<SchoolDetailPage />} />
-        <Route path="schools" element={<div className="p-8 text-center font-medium">Schools List coming soon</div>} />
-        <Route path="students" element={<div className="p-8 text-center font-medium">Students List coming soon</div>} />
+        <Route path="schools" element={<AdminSchoolsPage />} />
+        <Route path="students" element={<AdminStudentsPage />} />
         <Route path="export" element={<div className="p-8 text-center font-medium">Export coming soon</div>} />
       </Route>
 

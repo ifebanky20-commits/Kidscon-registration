@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '../components/ui/Card';
@@ -7,17 +7,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '.
 import { Modal } from '../components/ui/Modal';
 import { Plus, Trash2, Upload, BookOpen, Users, UserPlus, CheckCircle, School, AlertCircle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-
-const MOCK_SCHOOLS = [
-  "Greenwood High School",
-  "Sunrise Academy",
-  "Oakridge School",
-  "St. Mary College",
-  "Riverside Elementary",
-  "Hilltop Secondary School",
-  "Bright Future Academy",
-  "Elite International School"
-];
 
 export default function RegistrationPage() {
   const navigate = useNavigate();
@@ -35,6 +24,25 @@ export default function RegistrationPage() {
   const [newTeacherName, setNewTeacherName] = useState('');
   const [submitLoading, setSubmitLoading] = useState(false);
   const [submitError, setSubmitError] = useState('');
+
+  const [availableSchools, setAvailableSchools] = useState([]);
+
+  useEffect(() => {
+    async function fetchAvailableSchools() {
+      try {
+        const { data, error } = await supabase
+          .from('available_schools')
+          .select('name')
+          .order('name');
+        
+        if (error) throw error;
+        setAvailableSchools(data.map(s => s.name));
+      } catch (err) {
+        console.error('Error fetching available schools:', err);
+      }
+    }
+    fetchAvailableSchools();
+  }, []);
 
   const handleNext = () => setStep(s => s + 1);
   const handlePrev = () => setStep(s => s - 1);
@@ -176,7 +184,7 @@ export default function RegistrationPage() {
                   onChange={e => setSchoolInfo({...schoolInfo, name: e.target.value})}
                 >
                   <option value="" disabled>Select a school</option>
-                  {MOCK_SCHOOLS.map(school => (
+                  {availableSchools.map(school => (
                     <option key={school} value={school}>{school}</option>
                   ))}
                   <option value="Other">Other (Not Listed)</option>
