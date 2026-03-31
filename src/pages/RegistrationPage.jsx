@@ -65,21 +65,21 @@ export default function RegistrationPage() {
     setSubmitLoading(true);
     setSubmitError('');
     try {
-      const { data: schoolData, error: schoolError } = await supabase
+      // Generate UUID locally so we don't need to .select() it back (which triggers RLS block)
+      const schoolId = crypto.randomUUID();
+
+      const { error: schoolError } = await supabase
         .from('schools')
         .insert({
+          id: schoolId,
           name: schoolInfo.name,
           category: schoolInfo.category,
           address: schoolInfo.address,
           contact_person: schoolInfo.contactPerson,
           phone: schoolInfo.phone,
-        })
-        .select()
-        .single();
+        });
 
       if (schoolError) throw schoolError;
-
-      const schoolId = schoolData.id;
 
       if (students.length > 0) {
         const { error: studentsError } = await supabase
