@@ -5,7 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '../compone
 import { Input } from '../components/ui/Input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/Table';
 import { Modal } from '../components/ui/Modal';
-import { Plus, Trash2, Upload, BookOpen, Users, UserPlus, CheckCircle, School } from 'lucide-react';
+import { Plus, Trash2, Upload, BookOpen, Users, UserPlus, CheckCircle, School, AlertCircle } from 'lucide-react';
+import { supabase } from '../lib/supabase';
 
 const MOCK_SCHOOLS = [
   "Greenwood High School",
@@ -32,6 +33,8 @@ export default function RegistrationPage() {
   const [newStudent, setNewStudent] = useState({ name: '', gender: 'Male', class: '' });
   
   const [newTeacherName, setNewTeacherName] = useState('');
+  const [submitLoading, setSubmitLoading] = useState(false);
+  const [submitError, setSubmitError] = useState('');
 
   const handleNext = () => setStep(s => s + 1);
   const handlePrev = () => setStep(s => s - 1);
@@ -58,9 +61,52 @@ export default function RegistrationPage() {
   const handleRemoveTeacher = (id) => {
     setTeachers(teachers.filter(t => t.id !== id));
   };
+  const handleSubmit = async () => {
+    setSubmitLoading(true);
+    setSubmitError('');
+    try {
+      const { data: schoolData, error: schoolError } = await supabase
+        .from('schools')
+        .insert({
+          name: schoolInfo.name,
+          category: schoolInfo.category,
+          address: schoolInfo.address,
+          contact_person: schoolInfo.contactPerson,
+          phone: schoolInfo.phone,
+        })
+        .select()
+        .single();
 
-  const handleSubmit = () => {
-    navigate('/confirmation', { state: { totalStudents: students.length } });
+      if (schoolError) throw schoolError;
+
+      const schoolId = schoolData.id;
+
+      if (students.length > 0) {
+        const { error: studentsError } = await supabase
+          .from('students')
+          .insert(students.map(s => ({
+            school_id: schoolId,
+            name: s.name,
+            gender: s.gender,
+            class: s.class,
+          })));
+        if (studentsError) throw studentsError;
+      }
+
+      if (teachers.length > 0) {
+        const { error: teachersError } = await supabase
+          .from('teachers')
+          .insert(teachers.map(t => ({ school_id: schoolId, name: t.name })));
+        if (teachersError) throw teachersError;
+      }
+
+      navigate('/confirmation', { state: { totalStudents: students.length, schoolName: schoolInfo.name } });
+    } catch (err) {
+      setSubmitError('Failed to register. Please check your connection and try again.');
+      console.error('Registration error:', err);
+    } finally {
+      setSubmitLoading(false);
+    }
   };
 
   const stepIcons = [BookOpen, Users, UserPlus, CheckCircle];
@@ -309,12 +355,19 @@ export default function RegistrationPage() {
           )}
 
         </CardContent>
+
+        {submitError && step === 4 && (
+          <div className="mx-6 mb-4 flex items-center justify-center gap-2 bg-md-error/10 text-md-error p-4 rounded-xl text-sm font-semibold">
+            <AlertCircle size={20} />
+            {submitError}
+          </div>
+        )}
         
         <CardFooter className="justify-between bg-md-surface-container-low/50 border-t border-md-outline/10 p-6 rounded-b-[32px]">
           <Button 
             variant="ghost" 
             onClick={handlePrev} 
-            disabled={step === 1}
+            disabled={step === 1 || submitLoading}
             className={step === 1 ? 'invisible focus:outline-none' : 'text-md-on-surface-variant'}
           >
             ← Back
@@ -325,8 +378,20 @@ export default function RegistrationPage() {
               Next Step
             </Button>
           ) : (
-            <Button onClick={handleSubmit} variant="primary" className="gap-2 px-10 h-14 text-lg font-bold bg-md-primary hover:bg-md-primary/90 md-elevation-2 hover:md-elevation-3">
-              Submit Registration
+            <Button 
+              onClick={handleSubmit} 
+              variant="primary" 
+              disabled={submitLoading}
+              className="gap-2 px-10 h-14 text-lg font-bold bg-md-primary hover:bg-md-primary/90 md-elevation-2 hover:md-elevation-3 transition-opacity"
+            >
+              {submitLoading ? (
+                <span className="flex items-center gap-3">
+                  <div className="w-5 h-5 rounded-full border-2 border-white/30 border-t-white animate-spin" />
+                  Submitting Registration...
+                </span>
+              ) : (
+                'Submit Registration'
+              )}
             </Button>
           )}
         </CardFooter>

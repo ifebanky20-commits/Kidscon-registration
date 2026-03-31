@@ -1,7 +1,16 @@
-import { Outlet, NavLink, Link } from 'react-router-dom';
+import { Outlet, NavLink, Link, useNavigate } from 'react-router-dom';
 import { LayoutDashboard, School, Users, Download, LogOut } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
 export default function AdminLayout() {
+  const { signOut } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    await signOut();
+    navigate('/login');
+  };
+
   const navItems = [
     { label: 'Dashboard', icon: LayoutDashboard, path: '/admin', exact: true },
     { label: 'Schools', icon: School, path: '/admin/schools' },
@@ -48,10 +57,13 @@ export default function AdminLayout() {
         </div>
 
         <div className="p-4 border-t border-md-outline/5">
-          <Link to="/" className="flex items-center gap-4 px-4 py-3.5 rounded-full text-md-on-surface-variant hover:bg-md-on-surface-variant/10 active:bg-md-on-surface-variant/20 transition-all font-medium">
+          <button 
+            onClick={handleLogout}
+            className="flex items-center gap-4 px-4 py-3.5 rounded-full text-md-on-surface-variant hover:bg-bg-md-on-surface-variant/10 active:bg-md-on-surface-variant/20 transition-all font-medium w-full text-left cursor-pointer"
+          >
             <LogOut size={20} strokeWidth={2} />
-            Exit Admin
-          </Link>
+            Sign Out
+          </button>
         </div>
       </aside>
 

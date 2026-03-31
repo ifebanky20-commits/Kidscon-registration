@@ -1,35 +1,89 @@
-import { Link } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { supabase } from '../lib/supabase';
 import { Card, CardContent } from '../components/ui/Card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/Table';
 import { Button } from '../components/ui/Button';
 import { Users, School, ChevronRight } from 'lucide-react';
 
-const MOCK_DATA = [
-  { id: 1, name: "Greenwood High School", students: 45, date: "2026-03-20" },
-  { id: 2, name: "Sunrise Academy", students: 120, date: "2026-03-21" },
-  { id: 3, name: "Oakridge School", students: 32, date: "2026-03-22" },
-];
-
 export default function AdminDashboard() {
+  const navigate = useNavigate();
+  const [schools, setSchools] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchDashboardData = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('schools')
+        .select(`
+          id,
+          name,
+          created_at,
+          students (count)
+        `)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setSchools(data || []);
+    } catch (err) {
+      console.error('Error fetching dashboard data:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchDashboardData();
+
+    // Subscribe to real-time additions (to instantly reflect registrations on the dashboard)
+    const channel = supabase
+      .channel('schema-db-changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'schools' },
+        () => fetchDashboardData()
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'students' },
+        () => fetchDashboardData()
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  const totalSchools = schools.length;
+  const totalStudents = schools.reduce((sum, school) => sum + (school.students[0]?.count || 0), 0);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-32">
+        <div className="w-12 h-12 rounded-full border-4 border-md-secondary-container border-t-md-primary animate-spin" />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500 ease-md pb-12">
       
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold text-md-on-background tracking-tight">Dashboard Overview</h1>
-          <p className="text-md-on-surface-variant font-medium mt-1">Welcome back. Here is the registration breakdown.</p>
+          <p className="text-md-on-surface-variant font-medium mt-1">Real-time registration tracking powered by Supabase.</p>
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        
         {/* Stat Card 1 */}
         <Card className="rounded-[28px] border-none bg-md-secondary-container text-md-on-secondary-container hover:bg-md-primary hover:text-md-on-primary transition-all duration-500 group cursor-default">
           <CardContent className="p-8 pb-10">
             <div className="flex items-center justify-between">
               <div>
                 <p className="font-semibold text-sm tracking-wide uppercase opacity-80 mb-1">Total Schools</p>
-                <p className="text-5xl font-extrabold tracking-tight">24</p>
+                <p className="text-5xl font-extrabold tracking-tight">{totalSchools}</p>
               </div>
               <div className="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center transform transition-transform group-hover:scale-110 group-hover:rotate-6 duration-500">
                 <School size={28} />
@@ -44,7 +98,7 @@ export default function AdminDashboard() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="font-semibold text-sm tracking-wide uppercase opacity-80 mb-1">Total Students</p>
-                <p className="text-5xl font-extrabold tracking-tight">845</p>
+                <p className="text-5xl font-extrabold tracking-tight">{totalStudents}</p>
               </div>
               <div className="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center transform transition-transform group-hover:scale-110 group-hover:-rotate-6 duration-500">
                 <Users size={28} />
@@ -52,7 +106,6 @@ export default function AdminDashboard() {
             </div>
           </CardContent>
         </Card>
-
       </div>
 
       <div className="space-y-6 pt-4">
@@ -68,24 +121,38 @@ export default function AdminDashboard() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {MOCK_DATA.map((school) => (
-              <TableRow key={school.id} className="group hover:bg-md-surface-container border-md-outline/5 cursor-pointer" onClick={() => window.location.href = `/admin/school/${school.id}`}>
-                <TableCell className="font-bold text-md-on-background py-5">{school.name}</TableCell>
-                <TableCell className="py-5">
-                  <span className="bg-md-primary/10 text-md-primary px-3 py-1 rounded-full text-sm font-bold tracking-wide">
-                    {school.students}
-                  </span>
-                </TableCell>
-                <TableCell className="text-md-on-surface-variant font-medium py-5">{school.date}</TableCell>
-                <TableCell className="text-right py-5">
-                  <Button variant="ghost" size="sm" asChild className="opacity-0 group-hover:opacity-100 transition-opacity bg-md-secondary-container/50 hover:bg-md-secondary-container">
-                    <Link to={`/admin/school/${school.id}`} className="gap-2">
-                      View Details <ChevronRight size={16} />
-                    </Link>
-                  </Button>
+            {schools.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={4} className="text-center py-10 text-md-on-surface-variant font-medium">
+                  Waiting for initial registrations...
                 </TableCell>
               </TableRow>
-            ))}
+            ) : (
+              schools.map((school) => (
+                <TableRow 
+                  key={school.id} 
+                  className="group hover:bg-md-surface-container border-md-outline/5 cursor-pointer"
+                  onClick={() => navigate(`/admin/school/${school.id}`)}
+                >
+                  <TableCell className="font-bold text-md-on-background py-5">{school.name}</TableCell>
+                  <TableCell className="py-5">
+                    <span className="bg-md-primary/10 text-md-primary px-3 py-1 rounded-full text-sm font-bold tracking-wide">
+                      {school.students[0]?.count || 0}
+                    </span>
+                  </TableCell>
+                  <TableCell className="text-md-on-surface-variant font-medium py-5">
+                    {new Date(school.created_at).toLocaleDateString()}
+                  </TableCell>
+                  <TableCell className="text-right py-5">
+                    <Button variant="ghost" size="sm" asChild className="opacity-0 group-hover:opacity-100 transition-opacity bg-md-secondary-container/50 hover:bg-md-secondary-container">
+                      <Link to={`/admin/school/${school.id}`} className="gap-2" onClick={(e) => e.stopPropagation()}>
+                        View Details <ChevronRight size={16} />
+                      </Link>
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
           </TableBody>
         </Table>
       </div>

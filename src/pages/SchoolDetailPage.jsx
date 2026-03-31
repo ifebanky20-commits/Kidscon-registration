@@ -1,28 +1,66 @@
+import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import { supabase } from '../lib/supabase';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/Card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/Table';
 import { Button } from '../components/ui/Button';
 import { ArrowLeft, Printer, Download, MapPin, User, Phone } from 'lucide-react';
 
-const MOCK_SCHOOL_DETAILS = {
-  1: {
-    name: "Greenwood High School",
-    address: "123 Education Lane, Learning District",
-    contactPerson: "Mrs. Sarah Jenks",
-    phone: "08012345678",
-    category: "Secondary",
-    students: [
-      { id: 1, name: "Alice Smith", gender: "Female", class: "Grade 5" },
-      { id: 2, name: "Bob Johnson", gender: "Male", class: "Grade 5" },
-      { id: 3, name: "Charlie Brown", gender: "Male", class: "Grade 6" },
-      { id: 4, name: "Diana Prince", gender: "Female", class: "Grade 6" },
-    ]
-  }
-};
-
 export default function SchoolDetailPage() {
   const { id } = useParams();
-  const school = MOCK_SCHOOL_DETAILS[id] || MOCK_SCHOOL_DETAILS[1]; 
+  const [school, setSchool] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchSchool() {
+      try {
+        const { data, error } = await supabase
+          .from('schools')
+          .select(`
+            *,
+            students (*),
+            teachers (*)
+          `)
+          .eq('id', id)
+          .single();
+
+        if (error) throw error;
+        
+        // Sort students logically if needed by ID
+        if (data.students) {
+          data.students.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+        }
+        
+        setSchool(data);
+      } catch (err) {
+        console.error('Error fetching school details:', err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    
+    fetchSchool();
+  }, [id]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-32">
+        <div className="w-12 h-12 rounded-full border-4 border-md-secondary-container border-t-md-primary animate-spin" />
+      </div>
+    );
+  }
+
+  if (!school) {
+    return (
+      <div className="text-center py-20 animate-in fade-in">
+        <h2 className="text-2xl font-bold text-md-on-background">School Not Found</h2>
+        <p className="text-md-on-surface-variant mt-2 mb-6">The registration record you are looking for does not exist.</p>
+        <Link to="/admin">
+          <Button variant="outline">Return to Dashboard</Button>
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-10 max-w-6xl animate-in fade-in slide-in-from-bottom-4 duration-500 ease-md pb-12">
@@ -72,7 +110,7 @@ export default function SchoolDetailPage() {
                 </div>
                 <div>
                   <p className="text-sm font-bold text-md-on-surface-variant tracking-wide uppercase mb-1">Physical Address</p>
-                  <p className="text-base text-md-on-background font-medium leading-relaxed">{school.address}</p>
+                  <p className="text-base text-md-on-background font-medium leading-relaxed">{school.address || 'N/A'}</p>
                 </div>
               </div>
 
@@ -84,7 +122,7 @@ export default function SchoolDetailPage() {
                 </div>
                 <div>
                   <p className="text-sm font-bold text-md-on-surface-variant tracking-wide uppercase mb-1">Contact Person</p>
-                  <p className="text-base text-md-on-background font-medium">{school.contactPerson}</p>
+                  <p className="text-base text-md-on-background font-medium">{school.contact_person || 'N/A'}</p>
                 </div>
               </div>
 
@@ -96,7 +134,7 @@ export default function SchoolDetailPage() {
                 </div>
                 <div>
                   <p className="text-sm font-bold text-md-on-surface-variant tracking-wide uppercase mb-1">Phone Reference</p>
-                  <p className="text-base text-md-on-background font-medium">{school.phone}</p>
+                  <p className="text-base text-md-on-background font-medium">{school.phone || 'N/A'}</p>
                 </div>
               </div>
 
@@ -106,7 +144,7 @@ export default function SchoolDetailPage() {
           {/* Quick Stat */}
           <div className="bg-md-secondary-container text-md-on-secondary-container p-8 rounded-[32px] text-center md-elevation-1 transform transition-transform hover:-translate-y-2 hover:shadow-lg duration-500 ease-md">
             <p className="font-semibold tracking-wide uppercase mb-2 text-sm opacity-80">Total Enrollments</p>
-            <p className="text-6xl font-extrabold tracking-tight">{school.students.length}</p>
+            <p className="text-6xl font-extrabold tracking-tight">{school.students?.length || 0}</p>
           </div>
         </div>
 
@@ -126,20 +164,28 @@ export default function SchoolDetailPage() {
               </TableRow>
             </TableHeader>
             <TableBody className="[&_tr:last-child_td:first-child]:rounded-bl-[24px] [&_tr:last-child_td:last-child]:rounded-br-[24px]">
-              {school.students.map((student, idx) => (
-                <TableRow key={student.id} className="hover:bg-md-surface-container-low transition-colors duration-200 border-md-outline/5">
-                  <TableCell className="text-center text-md-on-surface-variant font-medium">{idx + 1}</TableCell>
-                  <TableCell className="font-bold text-md-on-background">{student.name}</TableCell>
-                  <TableCell>
-                    <span className={`inline-flex px-3 py-1 rounded-full text-xs font-semibold tracking-wide ${
-                      student.gender === 'Female' ? 'bg-[#FFD8E4] text-[#31111D]' : 'bg-md-secondary-container text-md-on-secondary-container'
-                    }`}>
-                      {student.gender}
-                    </span>
+              {(!school.students || school.students.length === 0) ? (
+                <TableRow>
+                  <TableCell colSpan={4} className="text-center py-10 font-medium text-md-on-surface-variant">
+                    No students registered for this school.
                   </TableCell>
-                  <TableCell className="text-md-on-surface-variant font-medium">{student.class}</TableCell>
                 </TableRow>
-              ))}
+              ) : (
+                school.students.map((student, idx) => (
+                  <TableRow key={student.id} className="hover:bg-md-surface-container-low transition-colors duration-200 border-md-outline/5">
+                    <TableCell className="text-center text-md-on-surface-variant font-medium">{idx + 1}</TableCell>
+                    <TableCell className="font-bold text-md-on-background">{student.name}</TableCell>
+                    <TableCell>
+                      <span className={`inline-flex px-3 py-1 rounded-full text-xs font-semibold tracking-wide ${
+                        student.gender === 'Female' ? 'bg-[#FFD8E4] text-[#31111D]' : 'bg-md-secondary-container text-md-on-secondary-container'
+                      }`}>
+                        {student.gender}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-md-on-surface-variant font-medium">{student.class}</TableCell>
+                  </TableRow>
+                ))
+              )}
             </TableBody>
           </Table>
         </div>
