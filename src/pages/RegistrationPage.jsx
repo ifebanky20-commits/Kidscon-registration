@@ -25,24 +25,7 @@ export default function RegistrationPage() {
   const [submitLoading, setSubmitLoading] = useState(false);
   const [submitError, setSubmitError] = useState('');
 
-  const [availableSchools, setAvailableSchools] = useState([]);
 
-  useEffect(() => {
-    async function fetchAvailableSchools() {
-      try {
-        const { data, error } = await supabase
-          .from('available_schools')
-          .select('name')
-          .order('name');
-        
-        if (error) throw error;
-        setAvailableSchools(data.map(s => s.name));
-      } catch (err) {
-        console.error('Error fetching available schools:', err);
-      }
-    }
-    fetchAvailableSchools();
-  }, []);
 
   const handleNext = () => setStep(s => s + 1);
   const handlePrev = () => setStep(s => s - 1);
@@ -176,20 +159,12 @@ export default function RegistrationPage() {
           {/* STEP 1: School Info */}
           {step === 1 && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-8 animate-in fade-in slide-in-from-right-4 duration-300 ease-md">
-              <div className="group">
-                <label className="block text-sm font-medium text-md-on-surface-variant mb-1 pl-4 transition-colors group-focus-within:text-md-primary">School Name</label>
-                <select 
-                  className="flex h-14 w-full rounded-t-lg rounded-b-none border-b-2 border-md-outline bg-md-surface-container-low px-4 py-2 text-base focus:outline-none focus:border-md-primary focus:bg-md-surface-container-low/80 transition-all duration-200 ease-md"
-                  value={schoolInfo.name}
-                  onChange={e => setSchoolInfo({...schoolInfo, name: e.target.value})}
-                >
-                  <option value="" disabled>Select a school</option>
-                  {availableSchools.map(school => (
-                    <option key={school} value={school}>{school}</option>
-                  ))}
-                  <option value="Other">Other (Not Listed)</option>
-                </select>
-              </div>
+              <Input
+                label="School Name"
+                placeholder="Enter your school's full name"
+                value={schoolInfo.name}
+                onChange={e => setSchoolInfo({...schoolInfo, name: e.target.value})}
+              />
               <div className="group">
                 <label className="block text-sm font-medium text-md-on-surface-variant mb-1 pl-4 transition-colors group-focus-within:text-md-primary">School Category</label>
                 <select 
