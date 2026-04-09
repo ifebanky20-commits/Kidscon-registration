@@ -557,8 +557,8 @@ export default function RegistrationPage() {
           </div>
           
           <Input 
-            label="Class / Grade Details" 
-            placeholder="e.g. Grade 5"
+            label="Class Details" 
+            placeholder="e.g. Primary 5"
             value={newStudent.class}
             onChange={e => setNewStudent({...newStudent, class: e.target.value})}
           />
