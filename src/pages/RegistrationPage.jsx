@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import * as XLSX from 'xlsx';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '../components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '../components/ui/Card';
 import { Input } from '../components/ui/Input';
@@ -227,11 +228,18 @@ export default function RegistrationPage() {
           </CardTitle>
         </CardHeader>
         
-        <CardContent className="min-h-[350px] p-8">
-          
+        <CardContent className="min-h-[350px] p-8 max-w-full overflow-hidden">
+          <AnimatePresence mode="wait" initial={false}>
           {/* STEP 1: School Info */}
           {step === 1 && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-8 animate-in fade-in slide-in-from-right-4 duration-300 ease-md">
+            <motion.div
+              key="step1"
+              initial={{ opacity: 0, x: 20, filter: "blur(4px)" }}
+              animate={{ opacity: 1, x: 0, filter: "blur(0px)" }}
+              exit={{ opacity: 0, x: -12, filter: "blur(4px)" }}
+              transition={{ type: "spring", duration: 0.45, bounce: 0 }}
+              className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-8"
+            >
               {/* School name with verified badge */}
               <div>
                 <Input
@@ -281,12 +289,19 @@ export default function RegistrationPage() {
                 value={schoolInfo.phone}
                 onChange={e => setSchoolInfo({...schoolInfo, phone: e.target.value})}
               />
-            </div>
+            </motion.div>
           )}
 
           {/* STEP 2: Students */}
           {step === 2 && (
-            <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300 ease-md">
+            <motion.div
+              key="step2"
+              initial={{ opacity: 0, x: 20, filter: "blur(4px)" }}
+              animate={{ opacity: 1, x: 0, filter: "blur(0px)" }}
+              exit={{ opacity: 0, x: -12, filter: "blur(4px)" }}
+              transition={{ type: "spring", duration: 0.45, bounce: 0 }}
+              className="space-y-6"
+            >
               {/* Hidden file input */}
               <input
                 ref={fileInputRef}
@@ -359,12 +374,19 @@ export default function RegistrationPage() {
                   </TableBody>
                 </Table>
               )}
-            </div>
+            </motion.div>
           )}
 
           {/* STEP 3: Teachers */}
           {step === 3 && (
-            <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-300 ease-md">
+            <motion.div
+              key="step3"
+              initial={{ opacity: 0, x: 20, filter: "blur(4px)" }}
+              animate={{ opacity: 1, x: 0, filter: "blur(0px)" }}
+              exit={{ opacity: 0, x: -12, filter: "blur(4px)" }}
+              transition={{ type: "spring", duration: 0.45, bounce: 0 }}
+              className="space-y-8"
+            >
               <div className="flex flex-col sm:flex-row gap-4">
                 <Input 
                   label="Teacher's Full Name"
@@ -397,12 +419,19 @@ export default function RegistrationPage() {
                   </ul>
                 </div>
               )}
-            </div>
+            </motion.div>
           )}
 
           {/* STEP 4: Review */}
           {step === 4 && (
-            <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-300 ease-md">
+            <motion.div
+              key="step4"
+              initial={{ opacity: 0, x: 20, filter: "blur(4px)" }}
+              animate={{ opacity: 1, x: 0, filter: "blur(0px)" }}
+              exit={{ opacity: 0, x: -12, filter: "blur(4px)" }}
+              transition={{ type: "spring", duration: 0.45, bounce: 0 }}
+              className="space-y-8"
+            >
               <div className="bg-md-surface-container-low p-8 rounded-[24px] space-y-6">
                 <h3 className="font-bold text-xl text-md-on-background tracking-tight flex items-center gap-3">
                   <School className="text-md-primary" />
@@ -440,9 +469,9 @@ export default function RegistrationPage() {
                   <p className="text-5xl font-extrabold">{teachers.length}</p>
                 </div>
               </div>
-            </div>
+            </motion.div>
           )}
-
+          </AnimatePresence>
         </CardContent>
 
         {submitError && step === 4 && (
