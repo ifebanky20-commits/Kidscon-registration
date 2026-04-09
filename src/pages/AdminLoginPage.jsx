@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Lock, Mail, AlertCircle } from 'lucide-react';
-import logo from '../assets/logo.png';
+import logo from '../assets/logo.jpeg';
 
 export default function AdminLoginPage() {
   const navigate = useNavigate();

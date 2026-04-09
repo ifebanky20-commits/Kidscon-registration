@@ -1,7 +1,7 @@
 import { Outlet, NavLink, Link, useNavigate } from 'react-router-dom';
 import { LayoutDashboard, School, Users, Download, LogOut } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import logo from '../assets/logo.png';
+import logo from '../assets/logo.jpeg';
 
 export default function AdminLayout() {
   const { signOut } = useAuth();
