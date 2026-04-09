@@ -1,11 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import * as XLSX from 'xlsx';
 import { Button } from '../components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '../components/ui/Card';
 import { Input } from '../components/ui/Input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/Table';
 import { Modal } from '../components/ui/Modal';
-import { Plus, Trash2, Upload, BookOpen, Users, UserPlus, CheckCircle, School, AlertCircle } from 'lucide-react';
+import { Plus, Trash2, Upload, BookOpen, Users, UserPlus, CheckCircle, School, AlertCircle, FileCheck } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 export default function RegistrationPage() {
@@ -24,6 +25,69 @@ export default function RegistrationPage() {
   const [newTeacherName, setNewTeacherName] = useState('');
   const [submitLoading, setSubmitLoading] = useState(false);
   const [submitError, setSubmitError] = useState('');
+
+  // Excel upload
+  const fileInputRef = useRef(null);
+  const [uploadError, setUploadError] = useState('');
+  const [uploadCount, setUploadCount] = useState(null);
+
+  const handleExcelUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setUploadError('');
+    setUploadCount(null);
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const workbook = XLSX.read(evt.target.result, { type: 'array' });
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+
+        if (rows.length === 0) {
+          setUploadError('The file appears to be empty.');
+          return;
+        }
+
+        // Normalise column headers to lowercase for flexible matching
+        const parsed = [];
+        const skipped = [];
+
+        rows.forEach((row, i) => {
+          const normalised = {};
+          Object.keys(row).forEach(k => { normalised[k.trim().toLowerCase()] = String(row[k]).trim(); });
+
+          const name = normalised['name'] || normalised['student name'] || normalised['full name'] || '';
+          const rawGender = (normalised['gender'] || normalised['sex'] || '').toLowerCase();
+          const gender = rawGender.startsWith('f') ? 'Female' : rawGender.startsWith('m') ? 'Male' : '';
+          const cls = normalised['class'] || normalised['grade'] || normalised['class / grade'] || '';
+
+          if (!name) { skipped.push(i + 2); return; }
+
+          parsed.push({ name, gender: gender || 'Male', class: cls, id: Date.now() + i });
+        });
+
+        if (parsed.length === 0) {
+          setUploadError('No valid student rows found. Ensure your file has a "Name" column.');
+          return;
+        }
+
+        setStudents(prev => {
+          const existing = new Set(prev.map(s => s.name.toLowerCase()));
+          const newOnes = parsed.filter(s => !existing.has(s.name.toLowerCase()));
+          return [...prev, ...newOnes];
+        });
+
+        setUploadCount(parsed.length);
+        if (skipped.length) setUploadError(`${skipped.length} row(s) skipped (missing name).`);
+      } catch {
+        setUploadError('Could not read the file. Please use a valid .xlsx, .xls, or .csv file.');
+      }
+    };
+    reader.readAsArrayBuffer(file);
+    // Reset so the same file can be re-uploaded if needed
+    e.target.value = '';
+  };
 
 
 
@@ -202,10 +266,19 @@ export default function RegistrationPage() {
           {/* STEP 2: Students */}
           {step === 2 && (
             <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300 ease-md">
+              {/* Hidden file input */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".xlsx,.xls,.csv"
+                className="hidden"
+                onChange={handleExcelUpload}
+              />
+
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-md-surface-container-low p-4 rounded-2xl">
                 <p className="text-md-on-surface-variant font-medium ml-2">Total Students: <span className="font-bold text-2xl text-md-primary ml-2">{students.length}</span></p>
                 <div className="flex gap-2 w-full sm:w-auto">
-                  <Button variant="outline" className="hidden sm:flex gap-2 flex-1">
+                  <Button variant="outline" className="hidden sm:flex gap-2 flex-1" onClick={() => { setUploadError(''); setUploadCount(null); fileInputRef.current?.click(); }}>
                     <Upload size={18} /> Upload Excel
                   </Button>
                   <Button variant="secondary" onClick={() => setIsStudentModalOpen(true)} className="gap-2 flex-1 md-elevation-1 shadow-md">
@@ -213,6 +286,18 @@ export default function RegistrationPage() {
                   </Button>
                 </div>
               </div>
+
+              {/* Upload feedback */}
+              {uploadCount !== null && !uploadError && (
+                <div className="flex items-center gap-2 bg-green-50 text-green-700 p-3 rounded-xl text-sm font-semibold">
+                  <FileCheck size={16} /> {uploadCount} student{uploadCount !== 1 ? 's' : ''} imported successfully.
+                </div>
+              )}
+              {uploadError && (
+                <div className="flex items-center gap-2 bg-md-error/10 text-md-error p-3 rounded-xl text-sm font-semibold">
+                  <AlertCircle size={16} /> {uploadError}
+                </div>
+              )}
 
               {students.length === 0 ? (
                 <div className="text-center py-16 border-2 border-dashed border-md-outline/30 rounded-3xl bg-md-surface-container">
