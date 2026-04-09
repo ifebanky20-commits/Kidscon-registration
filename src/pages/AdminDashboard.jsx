@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase';
 import { Card, CardContent } from '../components/ui/Card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/Table';
 import { Button } from '../components/ui/Button';
-import { Users, School, ChevronRight } from 'lucide-react';
+import { Users, School, ChevronRight, Trash2 } from 'lucide-react';
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
@@ -54,6 +54,18 @@ export default function AdminDashboard() {
       supabase.removeChannel(channel);
     };
   }, []);
+
+  const handleDeleteSchool = async (e, school) => {
+    e.stopPropagation();
+    if (!window.confirm(`Delete "${school.name}" and all its student records? This cannot be undone.`)) return;
+    try {
+      const { error } = await supabase.from('schools').delete().eq('id', school.id);
+      if (error) throw error;
+    } catch (err) {
+      console.error('Delete failed:', err);
+      alert('Failed to delete school. Please try again.');
+    }
+  };
 
   const totalSchools = schools.length;
   const totalStudents = schools.reduce((sum, school) => sum + (school.students[0]?.count || 0), 0);
@@ -144,11 +156,21 @@ export default function AdminDashboard() {
                     {new Date(school.created_at).toLocaleDateString()}
                   </TableCell>
                   <TableCell className="text-right py-5">
-                    <Button variant="ghost" size="sm" asChild className="opacity-0 group-hover:opacity-100 transition-opacity bg-md-secondary-container/50 hover:bg-md-secondary-container">
-                      <Link to={`/admin/school/${school.id}`} className="gap-2" onClick={(e) => e.stopPropagation()}>
-                        View Details <ChevronRight size={16} />
-                      </Link>
-                    </Button>
+                    <div className="flex items-center justify-end gap-2">
+                      <Button variant="ghost" size="sm" asChild className="opacity-0 group-hover:opacity-100 transition-opacity bg-md-secondary-container/50 hover:bg-md-secondary-container">
+                        <Link to={`/admin/school/${school.id}`} className="gap-2" onClick={(e) => e.stopPropagation()}>
+                          View Details <ChevronRight size={16} />
+                        </Link>
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => handleDeleteSchool(e, school)}
+                        className="opacity-0 group-hover:opacity-100 transition-opacity text-md-error hover:bg-md-error/10 hover:text-md-error"
+                      >
+                        <Trash2 size={16} />
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))
