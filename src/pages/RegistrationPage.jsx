@@ -12,12 +12,32 @@ import { supabase } from '../lib/supabase';
 
 export default function RegistrationPage() {
   const navigate = useNavigate();
-  const [step, setStep] = useState(1);
+  const [step, setStep] = useState(() => {
+    const saved = localStorage.getItem('kidscon_reg_step');
+    return saved ? JSON.parse(saved) : 1;
+  });
   
   // Form State
-  const [schoolInfo, setSchoolInfo] = useState({ name: '', category: 'Primary', address: '', contactPerson: '', phone: '' });
-  const [students, setStudents] = useState([]);
-  const [teachers, setTeachers] = useState([]);
+  const [schoolInfo, setSchoolInfo] = useState(() => {
+    const saved = localStorage.getItem('kidscon_reg_schoolInfo');
+    return saved ? JSON.parse(saved) : { name: '', category: 'Primary', address: '', contactPerson: '', phone: '' };
+  });
+  const [students, setStudents] = useState(() => {
+    const saved = localStorage.getItem('kidscon_reg_students');
+    return saved ? JSON.parse(saved) : [];
+  });
+  const [teachers, setTeachers] = useState(() => {
+    const saved = localStorage.getItem('kidscon_reg_teachers');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  // Auto-save form state
+  useEffect(() => {
+    localStorage.setItem('kidscon_reg_step', JSON.stringify(step));
+    localStorage.setItem('kidscon_reg_schoolInfo', JSON.stringify(schoolInfo));
+    localStorage.setItem('kidscon_reg_students', JSON.stringify(students));
+    localStorage.setItem('kidscon_reg_teachers', JSON.stringify(teachers));
+  }, [step, schoolInfo, students, teachers]);
   
   // Modal State
   const [isStudentModalOpen, setIsStudentModalOpen] = useState(false);
@@ -175,6 +195,12 @@ export default function RegistrationPage() {
           .insert(teachers.map(t => ({ school_id: schoolId, name: t.name })));
         if (teachersError) throw teachersError;
       }
+
+      // Clear local storage upon successful submission
+      localStorage.removeItem('kidscon_reg_step');
+      localStorage.removeItem('kidscon_reg_schoolInfo');
+      localStorage.removeItem('kidscon_reg_students');
+      localStorage.removeItem('kidscon_reg_teachers');
 
       navigate('/confirmation', { state: { totalStudents: students.length, schoolName: schoolInfo.name } });
     } catch (err) {
@@ -558,7 +584,7 @@ export default function RegistrationPage() {
           
           <Input 
             label="Class Details" 
-            placeholder="e.g. Primary 5"
+            placeholder={schoolInfo.category === 'Secondary' ? "e.g. JSS 2" : "e.g. Primary 5"}
             value={newStudent.class}
             onChange={e => setNewStudent({...newStudent, class: e.target.value})}
           />
