@@ -70,8 +70,8 @@ export default function LandingPage() {
               "We can't wait to host your brilliant students at our next big event. Our team built this secure portal specifically to make your registration completely hassle-free, so you can focus on preparing the kids for an unforgettable experience."
             </p>
             <div className="pt-2 border-t border-md-outline/10 mt-6 inline-block w-full md:w-auto">
-              <p className="font-bold text-md-on-background text-lg pt-4">Message from the CEO</p>
-              <p className="text-md-on-surface-variant text-sm font-medium">KIDSCON MULTICREATIONS INTERNATIONAL</p>
+              <p className="font-bold text-md-on-background text-lg pt-4">Funmi Bankole</p>
+              <p className="text-md-on-surface-variant text-sm font-medium">KIDSCON CEO/MD</p>
             </div>
           </div>
         </div>
