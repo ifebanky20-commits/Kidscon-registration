@@ -103,6 +103,17 @@ export default function RegistrationPage() {
 
   const handleNext = () => setStep(s => s + 1);
   const handlePrev = () => setStep(s => s - 1);
+
+  const isNextDisabled = () => {
+    if (step === 1) {
+      return !schoolInfo.name.trim() || !schoolInfo.category || !schoolInfo.address.trim() || !schoolInfo.contactPerson.trim() || !schoolInfo.phone.trim();
+    }
+    if (step === 2) {
+      return students.length === 0;
+    }
+    // Step 3 (Teachers) is optional
+    return false;
+  };
   
   const handleAddStudent = () => {
     if (newStudent.name && newStudent.class) {
@@ -492,7 +503,11 @@ export default function RegistrationPage() {
           </Button>
 
           {step < 4 ? (
-            <Button onClick={handleNext} className="gap-2 px-8 h-12 text-base md-elevation-1 shadow-md">
+            <Button 
+              onClick={handleNext} 
+              disabled={isNextDisabled()}
+              className="gap-2 px-8 h-12 text-base md-elevation-1 shadow-md"
+            >
               Next Step
             </Button>
           ) : (
