@@ -59,11 +59,18 @@ export default function AdminDashboard() {
     e.stopPropagation();
     if (!window.confirm(`Delete "${school.name}" and all its student records? This cannot be undone.`)) return;
     try {
-      const { error } = await supabase.from('schools').delete().eq('id', school.id);
-      if (error) throw error;
+      // Delete children first to avoid FK constraint errors
+      const { error: studErr } = await supabase.from('students').delete().eq('school_id', school.id);
+      if (studErr) throw studErr;
+
+      const { error: teachErr } = await supabase.from('teachers').delete().eq('school_id', school.id);
+      if (teachErr) throw teachErr;
+
+      const { error: schoolErr } = await supabase.from('schools').delete().eq('id', school.id);
+      if (schoolErr) throw schoolErr;
     } catch (err) {
       console.error('Delete failed:', err);
-      alert('Failed to delete school. Please try again.');
+      alert(`Failed to delete: ${err.message || JSON.stringify(err)}`);
     }
   };
 
