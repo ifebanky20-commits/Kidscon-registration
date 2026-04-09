@@ -46,14 +46,15 @@ export default function LandingPage() {
 
         {/* Right Hero Visuals */}
         <div className="flex-1 relative w-full max-w-md lg:max-w-lg hidden md:block pt-12 lg:pt-0">
-          <div className="relative w-full aspect-[4/3] sm:aspect-square bg-md-surface-container rounded-[48px] overflow-hidden md-elevation-1 animate-in fade-in slide-in-from-right-8 duration-[700ms] ease-md group">
+          <div className="relative w-full aspect-[4/3] lg:aspect-[1.1/1] bg-md-surface-container rounded-[48px] overflow-hidden md-elevation-1 animate-in fade-in slide-in-from-right-8 duration-[700ms] ease-md group ring-4 ring-white/50 shadow-2xl">
             <img 
               src={eventPic} 
               alt="Kidscon Event Audience" 
-              className="absolute inset-0 w-full h-full object-cover transition-transform duration-[700ms] ease-md group-hover:scale-105" 
+              className="absolute inset-0 w-full h-full object-cover contrast-[1.05] saturate-[1.15] brightness-[1.03] transition-transform duration-[700ms] ease-md group-hover:scale-105" 
+              style={{ imageRendering: '-webkit-optimize-contrast' }}
             />
             {/* Subtle overlay for depth */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent pointer-events-none"></div>
+            <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-black/0 pointer-events-none"></div>
           </div>
         </div>
       </div>
@@ -71,7 +72,7 @@ export default function LandingPage() {
             </p>
             <div className="pt-2 border-t border-md-outline/10 mt-6 inline-block w-full md:w-auto">
               <p className="font-bold text-md-on-background text-lg pt-4">Funmi Bankole</p>
-              <p className="text-md-on-surface-variant text-sm font-medium">KIDSCON CEO/MD</p>
+              <p className="text-md-on-surface-variant text-sm font-medium">KIDSCON MD/CEO</p>
             </div>
           </div>
         </div>
