@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
-import ceoPic from '../../assets/ceo.jpg';
-import eventPic from '../../assets/event.jpg';
+import ceoPic from '../assets/ceo.jpg';
+import eventPic from '../assets/event.jpg';
 
 export default function LandingPage() {
   return (
