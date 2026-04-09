@@ -40,7 +40,7 @@ export default function AdminLoginPage() {
         
         {/* Logo */}
         <div className="text-center mb-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
-          <img src={logo} alt="KIDSCON Logo" className="h-20 w-auto mx-auto mb-5" />
+          <img src={logo} alt="KIDSCON Logo" className="h-24 w-auto mx-auto mb-5" style={{mixBlendMode: 'multiply'}} />
           <h1 className="text-3xl font-bold text-md-on-background tracking-tight">Admin Portal</h1>
           <p className="text-md-on-surface-variant mt-2">Sign in to access the KIDSCON dashboard</p>
         </div>

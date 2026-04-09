@@ -30,7 +30,7 @@ export default function AdminLayout() {
 
         <div className="h-24 flex items-center px-8 border-b border-md-outline/5 relative">
           <Link to="/" className="flex items-center gap-3 active:scale-95 transition-transform">
-            <img src={logo} alt="KIDSCON Logo" className="h-10 w-auto" />
+            <img src={logo} alt="KIDSCON Logo" className="h-12 w-auto" style={{mixBlendMode: 'multiply'}} />
             <span className="font-bold tracking-tight text-lg">KIDSCON Admin</span>
           </Link>
         </div>
@@ -75,7 +75,7 @@ export default function AdminLayout() {
         {/* Mobile Header */}
         <header className="md:hidden h-16 border-b border-md-outline/10 flex items-center px-4 bg-md-surface-container/80 backdrop-blur-md sticky top-0 z-10">
           <Link to="/" className="flex items-center gap-2">
-            <img src={logo} alt="KIDSCON Logo" className="h-8 w-auto" />
+            <img src={logo} alt="KIDSCON Logo" className="h-9 w-auto" style={{mixBlendMode: 'multiply'}} />
             <span className="font-bold">Admin Portal</span>
           </Link>
         </header>
