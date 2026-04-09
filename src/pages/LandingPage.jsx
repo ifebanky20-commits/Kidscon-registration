@@ -13,19 +13,23 @@ export default function LandingPage() {
           <div className="space-y-6">
             <div className="inline-flex items-center px-4 py-1.5 rounded-full bg-md-secondary-container text-md-on-secondary-container text-sm font-medium mb-4 animate-in fade-in slide-in-from-bottom-2 duration-500 ease-md">
               <span className="flex w-2 h-2 rounded-full bg-md-primary mr-2 animate-pulse"></span>
-              Registrations now open for 2026
+              2026 Event Registration Now Open
             </div>
 
-            <h1 className="text-5xl md:text-6xl lg:text-[64px] font-bold text-md-on-background tracking-tight leading-[1.1] animate-in fade-in slide-in-from-bottom-4 duration-500 delay-100 ease-md fill-mode-both">
-              Pre-register students for <span className="text-md-primary bg-md-primary/10 px-2 rounded-2xl inline-block -rotate-1 mt-1">Kidscon</span> events
+            <h1 className="text-5xl md:text-6xl lg:text-[72px] font-extrabold text-md-on-background tracking-tighter leading-[1.1] animate-in fade-in slide-in-from-bottom-4 duration-500 delay-100 ease-md fill-mode-both">
+              Pre-register Students for <span className="text-md-primary bg-md-primary/10 px-2 rounded-2xl inline-block -rotate-1 mt-1">KIDSCON</span> Events with Ease
             </h1>
 
-            <p className="text-lg md:text-xl text-md-on-surface-variant max-w-lg lg:max-w-none mx-auto lg:mx-0 leading-relaxed animate-in fade-in slide-in-from-bottom-4 duration-500 delay-200 ease-md fill-mode-both">
-              A personal, fast, and secure way for school administrators to manage student registrations and event participation. Let's make it effortless.
+            <p className="text-xl md:text-2xl font-medium text-md-on-surface-variant max-w-xl mx-auto lg:mx-0 leading-relaxed animate-in fade-in slide-in-from-bottom-4 duration-500 delay-200 ease-md fill-mode-both">
+              A fast, secure, and stress-free way for schools to register students before event day—saving time, reducing paperwork, and making participation seamless.
+            </p>
+
+            <p className="text-base md:text-lg text-md-on-surface-variant/80 max-w-xl mx-auto lg:mx-0 leading-relaxed animate-in fade-in slide-in-from-bottom-4 duration-500 delay-[300ms] ease-md fill-mode-both">
+              KIDSCON Register helps school administrators submit student and teacher details online in advance, so event-day check-in is faster, more organized, and hassle-free for everyone.
             </p>
           </div>
 
-          <div className="flex flex-col sm:flex-row items-center gap-4 justify-center lg:justify-start pt-2 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-300 ease-md fill-mode-both">
+          <div className="flex flex-col sm:flex-row items-center gap-4 justify-center lg:justify-start pt-4 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-[400ms] ease-md fill-mode-both">
             <Link to="/register" className="w-full sm:w-auto">
               <Button variant="primary" size="lg" className="w-full h-14 md-elevation-2">
                 Register Your School
