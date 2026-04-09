@@ -13,7 +13,7 @@ export default function AdminLayout() {
 
   const navItems = [
     { label: 'Dashboard', icon: LayoutDashboard, path: '/admin', exact: true },
-    { label: 'Schools', icon: School, path: '/admin/schools' },
+    { label: 'Verified Schools', icon: School, path: '/admin/schools' },
     { label: 'Students', icon: Users, path: '/admin/students' },
     { label: 'Export Data', icon: Download, path: '/admin/export' },
   ];

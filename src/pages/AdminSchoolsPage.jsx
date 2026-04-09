@@ -96,8 +96,8 @@ export default function AdminSchoolsPage() {
       
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-md-on-background tracking-tight">Manage Schools List</h1>
-          <p className="text-md-on-surface-variant font-medium mt-1">Add or remove schools from the public registration dropdown.</p>
+          <h1 className="text-3xl font-bold text-md-on-background tracking-tight">Verified Schools</h1>
+          <p className="text-md-on-surface-variant font-medium mt-1">Manage the official list of verified schools. A badge is shown on the registration form when a school's name matches.</p>
         </div>
       </div>
 
@@ -111,7 +111,7 @@ export default function AdminSchoolsPage() {
                 <div className="w-10 h-10 bg-md-secondary-container text-md-on-secondary-container rounded-full flex items-center justify-center">
                   <Plus size={20} />
                 </div>
-                <h2 className="text-xl font-bold tracking-tight">Add New School</h2>
+                <h2 className="text-xl font-bold tracking-tight">Add Verified School</h2>
               </div>
 
               {addingError && (
@@ -136,7 +136,7 @@ export default function AdminSchoolsPage() {
                   className="w-full h-12 text-base md-elevation-1"
                   disabled={isAdding || !newSchoolName.trim()}
                 >
-                  {isAdding ? 'Adding...' : 'Add to Registry'}
+                  {isAdding ? 'Adding...' : 'Add to Verified List'}
                 </Button>
               </form>
             </CardContent>
@@ -162,7 +162,7 @@ export default function AdminSchoolsPage() {
                 {schools.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={3} className="text-center py-10 text-md-on-surface-variant font-medium">
-                      No schools have been added to the registry yet.
+                      No verified schools have been added yet.
                     </TableCell>
                   </TableRow>
                 ) : (

@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import * as XLSX from 'xlsx';
 import { Button } from '../components/ui/Button';
@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '../compone
 import { Input } from '../components/ui/Input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/Table';
 import { Modal } from '../components/ui/Modal';
-import { Plus, Trash2, Upload, BookOpen, Users, UserPlus, CheckCircle, School, AlertCircle, FileCheck } from 'lucide-react';
+import { Plus, Trash2, Upload, BookOpen, Users, UserPlus, CheckCircle, CheckCircle2, School, AlertCircle, FileCheck, ShieldCheck } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 export default function RegistrationPage() {
@@ -30,6 +30,15 @@ export default function RegistrationPage() {
   const fileInputRef = useRef(null);
   const [uploadError, setUploadError] = useState('');
   const [uploadCount, setUploadCount] = useState(null);
+
+  // Verified schools
+  const [verifiedSchools, setVerifiedSchools] = useState([]);
+  useEffect(() => {
+    supabase.from('available_schools').select('name').then(({ data }) => {
+      if (data) setVerifiedSchools(data.map(s => s.name.toLowerCase()));
+    });
+  }, []);
+  const isVerified = verifiedSchools.includes(schoolInfo.name.trim().toLowerCase());
 
   const handleExcelUpload = (e) => {
     const file = e.target.files[0];
@@ -223,12 +232,24 @@ export default function RegistrationPage() {
           {/* STEP 1: School Info */}
           {step === 1 && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-8 animate-in fade-in slide-in-from-right-4 duration-300 ease-md">
-              <Input
-                label="School Name"
-                placeholder="Enter your school's full name"
-                value={schoolInfo.name}
-                onChange={e => setSchoolInfo({...schoolInfo, name: e.target.value})}
-              />
+              {/* School name with verified badge */}
+              <div>
+                <Input
+                  label="School Name"
+                  placeholder="Enter your school's full name"
+                  value={schoolInfo.name}
+                  onChange={e => setSchoolInfo({...schoolInfo, name: e.target.value})}
+                />
+                {schoolInfo.name.trim() && (
+                  <div className={`flex items-center gap-1.5 mt-2 ml-4 text-xs font-semibold transition-all ${
+                    isVerified ? 'text-green-600' : 'text-md-on-surface-variant/60'
+                  }`}>
+                    {isVerified
+                      ? <><ShieldCheck size={13} /> Verified School</>
+                      : <><School size={13} /> Not yet on verified list</>}
+                  </div>
+                )}
+              </div>
               <div className="group">
                 <label className="block text-sm font-medium text-md-on-surface-variant mb-1 pl-4 transition-colors group-focus-within:text-md-primary">School Category</label>
                 <select 
