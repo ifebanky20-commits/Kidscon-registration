@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import * as XLSX from 'xlsx';
 import { supabase } from '../lib/supabase';
 import { Card, CardContent } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
@@ -40,6 +41,13 @@ function downloadCsv(filename, csvContent) {
   document.body.removeChild(link);
   URL.revokeObjectURL(url);
 }
+
+function downloadExcel(filename, headers, rows) {
+  const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Data');
+  XLSX.writeFile(wb, filename);
+}
 // ──────────────────────────────────────────────────────────────────────────────
 
 export default function AdminExportPage() {
@@ -48,6 +56,7 @@ export default function AdminExportPage() {
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(null); // 'all' | school.id | null
   const [exported, setExported] = useState(null);   // 'all' | school.id | null
+  const [exportFormat, setExportFormat] = useState('xlsx'); // 'csv' | 'xlsx'
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -110,9 +119,13 @@ export default function AdminExportPage() {
         s.school_category || '',
         new Date(s.created_at).toLocaleDateString(),
       ]);
-      const csv = buildCsv(headers, rows);
       const date = new Date().toISOString().slice(0, 10);
-      downloadCsv(`kidscon_all_students_${date}.csv`, csv);
+      if (exportFormat === 'csv') {
+        const csv = buildCsv(headers, rows);
+        downloadCsv(`kidscon_all_students_${date}.csv`, csv);
+      } else {
+        downloadExcel(`kidscon_all_students_${date}.xlsx`, headers, rows);
+      }
       setExported('all');
       setTimeout(() => setExported(null), 3000);
     } catch {
@@ -137,7 +150,12 @@ export default function AdminExportPage() {
       const csv = buildCsv(headers, rows);
       const safeName = school.name.replace(/[^a-z0-9]/gi, '_').toLowerCase();
       const date = new Date().toISOString().slice(0, 10);
-      downloadCsv(`kidscon_${safeName}_${date}.csv`, csv);
+      if (exportFormat === 'csv') {
+        const csv = buildCsv(headers, rows);
+        downloadCsv(`kidscon_${safeName}_${date}.csv`, csv);
+      } else {
+        downloadExcel(`kidscon_${safeName}_${date}.xlsx`, headers, rows);
+      }
       setExported(school.id);
       setTimeout(() => setExported(null), 3000);
     } catch {
@@ -161,9 +179,13 @@ export default function AdminExportPage() {
         s.students?.length || 0,
         new Date(s.created_at).toLocaleDateString(),
       ]);
-      const csv = buildCsv(headers, rows);
       const date = new Date().toISOString().slice(0, 10);
-      downloadCsv(`kidscon_schools_overview_${date}.csv`, csv);
+      if (exportFormat === 'csv') {
+        const csv = buildCsv(headers, rows);
+        downloadCsv(`kidscon_schools_overview_${date}.csv`, csv);
+      } else {
+        downloadExcel(`kidscon_schools_overview_${date}.xlsx`, headers, rows);
+      }
       setExported('schools');
       setTimeout(() => setExported(null), 3000);
     } catch {
@@ -187,11 +209,23 @@ export default function AdminExportPage() {
     <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500 ease-md pb-12">
 
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-md-on-background tracking-tight">Export Data</h1>
-        <p className="text-md-on-surface-variant font-medium mt-1">
-          Download registration data as CSV files, ready for Excel or Google Sheets.
-        </p>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-md-on-background tracking-tight">Export Data</h1>
+          <p className="text-md-on-surface-variant font-medium mt-1">
+            Download registration data instantly in your preferred format.
+          </p>
+        </div>
+        <div className="flex items-center gap-1 bg-md-surface-container-low border border-md-outline/10 p-1.5 rounded-full shadow-sm">
+          <button 
+            onClick={() => setExportFormat('csv')} 
+            className={`px-5 py-2 rounded-full text-sm font-bold tracking-wide transition-colors ${exportFormat === 'csv' ? 'bg-md-primary text-md-on-primary shadow-sm' : 'text-md-on-surface-variant hover:bg-md-surface-container'}`}
+          >CSV</button>
+          <button 
+            onClick={() => setExportFormat('xlsx')} 
+            className={`px-5 py-2 rounded-full text-sm font-bold tracking-wide transition-colors ${exportFormat === 'xlsx' ? 'bg-md-primary text-md-on-primary shadow-sm' : 'text-md-on-surface-variant hover:bg-md-surface-container'}`}
+          >Excel</button>
+        </div>
       </div>
 
       {error && (
@@ -229,6 +263,7 @@ export default function AdminExportPage() {
             done={exported === 'all'}
             onExport={handleExportAll}
             disabled={allStudents.length === 0}
+            format={exportFormat}
           />
 
           <ExportCard
@@ -240,6 +275,7 @@ export default function AdminExportPage() {
             done={exported === 'schools'}
             onExport={handleExportSchoolsOverview}
             disabled={schools.length === 0}
+            format={exportFormat}
           />
         </div>
       </div>
@@ -288,7 +324,7 @@ export default function AdminExportPage() {
                   ) : (
                     <Download size={14} />
                   )}
-                  {exported === school.id ? 'Exported!' : (school.students?.length || 0) === 0 ? 'No Data' : 'Export CSV'}
+                  {exported === school.id ? 'Exported!' : (school.students?.length || 0) === 0 ? 'No Data' : `Export ${exportFormat.toUpperCase()}`}
                 </button>
               </div>
             ))}
@@ -301,7 +337,7 @@ export default function AdminExportPage() {
 }
 
 // ── Reusable export card ───────────────────────────────────────────────────────
-function ExportCard({ icon, title, description, color, loading, done, onExport, disabled }) {
+function ExportCard({ icon, title, description, color, loading, done, onExport, disabled, format = 'csv' }) {
   const colorMap = {
     primary: 'bg-md-primary/10 text-md-primary',
     secondary: 'bg-md-secondary-container text-md-on-secondary-container',
@@ -336,7 +372,7 @@ function ExportCard({ icon, title, description, color, loading, done, onExport, 
           ) : (
             <FileSpreadsheet size={16} />
           )}
-          {loading ? 'Preparing…' : done ? 'Downloaded!' : 'Download CSV'}
+          {loading ? 'Preparing…' : done ? 'Downloaded!' : `Download ${format.toUpperCase()}`}
         </button>
       </CardContent>
     </Card>

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import * as XLSX from 'xlsx';
 import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/Table';
@@ -32,10 +33,18 @@ function downloadCsv(filename, csvContent) {
   URL.revokeObjectURL(url);
 }
 
+function downloadExcel(filename, headers, rows) {
+  const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Data');
+  XLSX.writeFile(wb, filename);
+}
+
 export default function AdminSchoolsPage() {
   const navigate = useNavigate();
   const [schools, setSchools] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [exportFormat, setExportFormat] = useState('xlsx'); // 'csv' | 'xlsx'
 
   const fetchRegisteredSchools = async () => {
     try {
@@ -124,9 +133,13 @@ export default function AdminSchoolsPage() {
         s.teachers[0]?.count || 0,
         new Date(s.created_at).toLocaleDateString(),
       ]);
-      const csv = buildCsv(headers, rows);
       const date = new Date().toISOString().slice(0, 10);
-      downloadCsv(`kidscon_registered_schools_${date}.csv`, csv);
+      if (exportFormat === 'csv') {
+        const csv = buildCsv(headers, rows);
+        downloadCsv(`kidscon_registered_schools_${date}.csv`, csv);
+      } else {
+        downloadExcel(`kidscon_registered_schools_${date}.xlsx`, headers, rows);
+      }
     } catch (err) {
       console.error('Export failed:', err);
       alert('Failed to export. Please try again.');
@@ -141,9 +154,21 @@ export default function AdminSchoolsPage() {
           <h1 className="text-3xl font-bold text-md-on-background tracking-tight">Registered Schools</h1>
           <p className="text-md-on-surface-variant font-medium mt-1">A comprehensive master list of all schools that have officially registered for the event.</p>
         </div>
-        <Button onClick={handleExportSchools} variant="outline" className="gap-2 shadow-sm shrink-0 font-semibold" disabled={loading || schools.length === 0}>
-          <Download size={18} /> Export List as CSV
-        </Button>
+        <div className="flex items-center gap-4 shrink-0">
+          <div className="flex items-center gap-1 bg-md-surface-container-low border border-md-outline/10 p-1.5 rounded-full shadow-sm">
+            <button 
+              onClick={() => setExportFormat('csv')} 
+              className={`px-4 py-1.5 rounded-full text-sm font-bold tracking-wide transition-colors ${exportFormat === 'csv' ? 'bg-md-primary text-md-on-primary shadow-sm' : 'text-md-on-surface-variant hover:bg-md-surface-container'}`}
+            >CSV</button>
+            <button 
+              onClick={() => setExportFormat('xlsx')} 
+              className={`px-4 py-1.5 rounded-full text-sm font-bold tracking-wide transition-colors ${exportFormat === 'xlsx' ? 'bg-md-primary text-md-on-primary shadow-sm' : 'text-md-on-surface-variant hover:bg-md-surface-container'}`}
+            >Excel</button>
+          </div>
+          <Button onClick={handleExportSchools} variant="outline" className="gap-2 shadow-sm font-semibold" disabled={loading || schools.length === 0}>
+            <Download size={18} /> Export as {exportFormat.toUpperCase()}
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-8">
