@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
-import { GraduationCap, Users } from 'lucide-react';
+import ceoPic from '../../assets/ceo.jpg';
+import eventPic from '../../assets/event.jpg';
 
 export default function LandingPage() {
   return (
@@ -45,29 +46,32 @@ export default function LandingPage() {
 
         {/* Right Hero Visuals */}
         <div className="flex-1 relative w-full max-w-md lg:max-w-lg hidden md:block pt-12 lg:pt-0">
+          <div className="relative w-full aspect-[4/3] sm:aspect-square bg-md-surface-container rounded-[48px] overflow-hidden md-elevation-1 animate-in fade-in slide-in-from-right-8 duration-[700ms] ease-md group">
+            <img 
+              src={eventPic} 
+              alt="Kidscon Event Audience" 
+              className="absolute inset-0 w-full h-full object-cover transition-transform duration-[700ms] ease-md group-hover:scale-105" 
+            />
+            {/* Subtle overlay for depth */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent pointer-events-none"></div>
+          </div>
+        </div>
+      </div>
 
-          <div className="relative w-full aspect-square bg-md-surface-container rounded-[48px] overflow-visible md-elevation-1 animate-in fade-in slide-in-from-right-8 duration-700 ease-md group">
-
-            {/* Organic Blur decorations nested inside container */}
-            <div className="absolute top-0 right-0 w-64 h-64 bg-[radial-gradient(circle_at_center,_var(--color-md-secondary-container)_0%,_transparent_70%)] opacity-80 mix-blend-multiply rounded-full -translate-y-1/4 translate-x-1/4 blur-2xl" />
-            <div className="absolute bottom-0 left-0 w-64 h-64 bg-[radial-gradient(circle_at_center,_var(--color-md-tertiary)_0%,_transparent_70%)] opacity-20 mix-blend-multiply rounded-full translate-y-1/4 -translate-x-1/4 blur-2xl" />
-
-            {/* Glassmorphism Abstract Items */}
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-8 relative z-10 transition-transform duration-500 group-hover:scale-[1.02] ease-md">
-
-              <div className="bg-white/80 backdrop-blur-md p-8 rounded-[32px] md-elevation-2 transform -rotate-3 transition-transform duration-500 ease-md group-hover:-rotate-6">
-                <GraduationCap className="w-24 h-24 text-md-primary" strokeWidth={1.5} />
-              </div>
-
-              <div className="flex gap-6 items-center">
-                <div className="bg-white/80 backdrop-blur-md p-6 rounded-[24px] md-elevation-2 transform rotate-6 transition-transform duration-500 ease-md group-hover:rotate-12 group-hover:-translate-y-2">
-                  <Users className="w-12 h-12 text-md-tertiary" strokeWidth={1.5} />
-                </div>
-                <div className="bg-md-primary/10 p-5 rounded-full transform -translate-y-6 -rotate-2 md-elevation-1">
-                  <span className="font-bold text-3xl text-md-primary">+</span>
-                </div>
-              </div>
-
+      {/* CEO Welcome Section */}
+      <div className="w-full max-w-5xl mt-20 mb-8 relative z-10 animate-in fade-in slide-in-from-bottom-8 duration-[700ms] delay-[500ms] ease-md fill-mode-both">
+        <div className="bg-md-surface-container-low rounded-[40px] p-8 md:p-12 flex flex-col md:flex-row items-center gap-10 md-elevation-1 ring-1 ring-md-outline/5 transition-transform duration-500 hover:shadow-lg">
+          <div className="w-40 h-40 md:w-56 md:h-56 shrink-0 rounded-full overflow-hidden border-8 border-white dark:border-md-background shadow-xl">
+            <img src={ceoPic} alt="CEO of KIDSCON Multicreations International" className="w-full h-full object-cover object-top" />
+          </div>
+          <div className="flex-1 text-center md:text-left space-y-5">
+            <h2 className="text-3xl md:text-4xl font-extrabold text-md-on-background tracking-tight">Welcome to the Portal</h2>
+            <p className="text-lg md:text-xl text-md-on-surface-variant leading-relaxed">
+              "We can't wait to host your brilliant students at our next big event. Our team built this secure portal specifically to make your registration completely hassle-free, so you can focus on preparing the kids for an unforgettable experience."
+            </p>
+            <div className="pt-2 border-t border-md-outline/10 mt-6 inline-block w-full md:w-auto">
+              <p className="font-bold text-md-on-background text-lg pt-4">Message from the CEO</p>
+              <p className="text-md-on-surface-variant text-sm font-medium">KIDSCON MULTICREATIONS INTERNATIONAL</p>
             </div>
           </div>
         </div>
