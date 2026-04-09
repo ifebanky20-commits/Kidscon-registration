@@ -3,7 +3,34 @@ import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/Table';
 import { Button } from '../components/ui/Button';
-import { School, Trash2, ChevronRight } from 'lucide-react';
+import { School, Trash2, ChevronRight, Download } from 'lucide-react';
+
+function escapeCsvCell(value) {
+  if (value == null) return '';
+  const str = String(value);
+  if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+    return `"${str.replace(/"/g, '""')}"`;
+  }
+  return str;
+}
+
+function buildCsv(headers, rows) {
+  const headerRow = headers.map(escapeCsvCell).join(',');
+  const dataRows = rows.map((row) => row.map(escapeCsvCell).join(','));
+  return [headerRow, ...dataRows].join('\n');
+}
+
+function downloadCsv(filename, csvContent) {
+  const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.setAttribute('download', filename);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
 
 export default function AdminSchoolsPage() {
   const navigate = useNavigate();
@@ -84,6 +111,28 @@ export default function AdminSchoolsPage() {
     }
   };
 
+  const handleExportSchools = () => {
+    try {
+      const headers = ['School Name', 'Category', 'Contact Person', 'Phone', 'Address', 'Total Students', 'Total Teachers', 'Registered On'];
+      const rows = schools.map((s) => [
+        s.name,
+        s.category || '',
+        s.contact_person || '',
+        s.phone || '',
+        s.address || '',
+        s.students[0]?.count || 0,
+        s.teachers[0]?.count || 0,
+        new Date(s.created_at).toLocaleDateString(),
+      ]);
+      const csv = buildCsv(headers, rows);
+      const date = new Date().toISOString().slice(0, 10);
+      downloadCsv(`kidscon_registered_schools_${date}.csv`, csv);
+    } catch (err) {
+      console.error('Export failed:', err);
+      alert('Failed to export. Please try again.');
+    }
+  };
+
   return (
     <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-300 ease-md pb-12">
       
@@ -92,6 +141,9 @@ export default function AdminSchoolsPage() {
           <h1 className="text-3xl font-bold text-md-on-background tracking-tight">Registered Schools</h1>
           <p className="text-md-on-surface-variant font-medium mt-1">A comprehensive master list of all schools that have officially registered for the event.</p>
         </div>
+        <Button onClick={handleExportSchools} variant="outline" className="gap-2 shadow-sm shrink-0 font-semibold" disabled={loading || schools.length === 0}>
+          <Download size={18} /> Export List as CSV
+        </Button>
       </div>
 
       <div className="grid grid-cols-1 gap-8">
