@@ -1,6 +1,7 @@
 import { Outlet, NavLink, Link, useNavigate } from 'react-router-dom';
 import { LayoutDashboard, School, Users, Download, LogOut } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import logo from '../assets/logo.png';
 
 export default function AdminLayout() {
   const { signOut } = useAuth();
@@ -29,9 +30,7 @@ export default function AdminLayout() {
 
         <div className="h-24 flex items-center px-8 border-b border-md-outline/5 relative">
           <Link to="/" className="flex items-center gap-3 active:scale-95 transition-transform">
-            <div className="w-10 h-10 bg-md-primary text-md-on-primary rounded-full flex items-center justify-center font-bold text-xl md-elevation-1">
-              K
-            </div>
+            <img src={logo} alt="KIDSCON Logo" className="h-10 w-auto" />
             <span className="font-bold tracking-tight text-lg">KIDSCON Admin</span>
           </Link>
         </div>
@@ -76,9 +75,7 @@ export default function AdminLayout() {
         {/* Mobile Header */}
         <header className="md:hidden h-16 border-b border-md-outline/10 flex items-center px-4 bg-md-surface-container/80 backdrop-blur-md sticky top-0 z-10">
           <Link to="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-md-primary text-md-on-primary rounded-full flex items-center justify-center font-bold text-sm">
-              K
-            </div>
+            <img src={logo} alt="KIDSCON Logo" className="h-8 w-auto" />
             <span className="font-bold">Admin Portal</span>
           </Link>
         </header>
