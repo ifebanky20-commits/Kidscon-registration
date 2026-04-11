@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
 import * as XLSX from 'xlsx';
+import { Document, Packer, Paragraph, Table, TableRow, TableCell, TextRun, HeadingLevel, WidthType, AlignmentType, BorderStyle } from 'docx';
 import { supabase } from '../lib/supabase';
 import { Card, CardContent } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import {
   Download,
   FileSpreadsheet,
+  FileText,
   Users,
   School,
   CheckCircle2,
@@ -17,7 +19,6 @@ import {
 function escapeCsvCell(value) {
   if (value == null) return '';
   const str = String(value);
-  // Wrap in quotes if the value contains a comma, quote, or newline
   if (str.includes(',') || str.includes('"') || str.includes('\n')) {
     return `"${str.replace(/"/g, '""')}"`;
   }
@@ -48,15 +49,99 @@ function downloadExcel(filename, headers, rows) {
   XLSX.utils.book_append_sheet(wb, ws, 'Data');
   XLSX.writeFile(wb, filename);
 }
+
+async function downloadWord(filename, title, headers, rows) {
+  const borderStyle = {
+    style: BorderStyle.SINGLE,
+    size: 1,
+    color: 'CCCCCC',
+  };
+  const cellBorders = { top: borderStyle, bottom: borderStyle, left: borderStyle, right: borderStyle };
+
+  const headerRow = new TableRow({
+    tableHeader: true,
+    children: headers.map((h) =>
+      new TableCell({
+        borders: cellBorders,
+        shading: { fill: '6750A4', color: 'FFFFFF' },
+        children: [
+          new Paragraph({
+            alignment: AlignmentType.CENTER,
+            children: [new TextRun({ text: String(h), bold: true, color: 'FFFFFF', size: 20 })],
+          }),
+        ],
+      })
+    ),
+  });
+
+  const dataRows = rows.map((row, rowIdx) =>
+    new TableRow({
+      children: row.map((cell) =>
+        new TableCell({
+          borders: cellBorders,
+          shading: { fill: rowIdx % 2 === 0 ? 'F8F4FF' : 'FFFFFF' },
+          children: [
+            new Paragraph({
+              children: [new TextRun({ text: String(cell ?? ''), size: 18 })],
+            }),
+          ],
+        })
+      ),
+    })
+  );
+
+  const doc = new Document({
+    sections: [
+      {
+        children: [
+          new Paragraph({
+            text: 'KIDSCON Registration',
+            heading: HeadingLevel.HEADING_1,
+            spacing: { after: 100 },
+          }),
+          new Paragraph({
+            children: [new TextRun({ text: title, bold: true, size: 26, color: '6750A4' })],
+            spacing: { after: 100 },
+          }),
+          new Paragraph({
+            children: [
+              new TextRun({
+                text: `Generated: ${new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}`,
+                italics: true,
+                color: '888888',
+                size: 18,
+              }),
+            ],
+            spacing: { after: 300 },
+          }),
+          new Table({
+            width: { size: 100, type: WidthType.PERCENTAGE },
+            rows: [headerRow, ...dataRows],
+          }),
+        ],
+      },
+    ],
+  });
+
+  const blob = await Packer.toBlob(doc);
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
 // ──────────────────────────────────────────────────────────────────────────────
 
 export default function AdminExportPage() {
   const [schools, setSchools] = useState([]);
   const [allStudents, setAllStudents] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [exporting, setExporting] = useState(null); // 'all' | school.id | null
-  const [exported, setExported] = useState(null);   // 'all' | school.id | null
-  const [exportFormat, setExportFormat] = useState('xlsx'); // 'csv' | 'xlsx'
+  const [exporting, setExporting] = useState(null);
+  const [exported, setExported] = useState(null);
+  const [exportFormat, setExportFormat] = useState('xlsx'); // 'csv' | 'xlsx' | 'docx'
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -65,7 +150,6 @@ export default function AdminExportPage() {
 
   const fetchData = async () => {
     try {
-      // Fetch all schools with their students
       const { data: schoolData, error: schoolErr } = await supabase
         .from('schools')
         .select(`
@@ -88,7 +172,6 @@ export default function AdminExportPage() {
 
       if (schoolErr) throw schoolErr;
 
-      // Flatten students for the 'all' export
       const flat = (schoolData || []).flatMap((s) =>
         (s.students || []).map((st) => ({ ...st, school_name: s.name, school_category: s.category }))
       );
@@ -105,7 +188,7 @@ export default function AdminExportPage() {
 
   // ── Export handlers ──────────────────────────────────────────────────────────
 
-  const handleExportAll = () => {
+  const handleExportAll = async () => {
     setExporting('all');
     setError('');
     try {
@@ -121,10 +204,11 @@ export default function AdminExportPage() {
       ]);
       const date = new Date().toISOString().slice(0, 10);
       if (exportFormat === 'csv') {
-        const csv = buildCsv(headers, rows);
-        downloadCsv(`kidscon_all_students_${date}.csv`, csv);
-      } else {
+        downloadCsv(`kidscon_all_students_${date}.csv`, buildCsv(headers, rows));
+      } else if (exportFormat === 'xlsx') {
         downloadExcel(`kidscon_all_students_${date}.xlsx`, headers, rows);
+      } else {
+        await downloadWord(`kidscon_all_students_${date}.docx`, 'All Students Report', headers, rows);
       }
       setExported('all');
       setTimeout(() => setExported(null), 3000);
@@ -135,7 +219,7 @@ export default function AdminExportPage() {
     }
   };
 
-  const handleExportSchool = (school) => {
+  const handleExportSchool = async (school) => {
     setExporting(school.id);
     setError('');
     try {
@@ -147,14 +231,14 @@ export default function AdminExportPage() {
         s.class,
         new Date(s.created_at).toLocaleDateString(),
       ]);
-      const csv = buildCsv(headers, rows);
       const safeName = school.name.replace(/[^a-z0-9]/gi, '_').toLowerCase();
       const date = new Date().toISOString().slice(0, 10);
       if (exportFormat === 'csv') {
-        const csv = buildCsv(headers, rows);
-        downloadCsv(`kidscon_${safeName}_${date}.csv`, csv);
-      } else {
+        downloadCsv(`kidscon_${safeName}_${date}.csv`, buildCsv(headers, rows));
+      } else if (exportFormat === 'xlsx') {
         downloadExcel(`kidscon_${safeName}_${date}.xlsx`, headers, rows);
+      } else {
+        await downloadWord(`kidscon_${safeName}_${date}.docx`, `${school.name} — Student List`, headers, rows);
       }
       setExported(school.id);
       setTimeout(() => setExported(null), 3000);
@@ -165,7 +249,7 @@ export default function AdminExportPage() {
     }
   };
 
-  const handleExportSchoolsOverview = () => {
+  const handleExportSchoolsOverview = async () => {
     setExporting('schools');
     setError('');
     try {
@@ -181,10 +265,11 @@ export default function AdminExportPage() {
       ]);
       const date = new Date().toISOString().slice(0, 10);
       if (exportFormat === 'csv') {
-        const csv = buildCsv(headers, rows);
-        downloadCsv(`kidscon_schools_overview_${date}.csv`, csv);
-      } else {
+        downloadCsv(`kidscon_schools_overview_${date}.csv`, buildCsv(headers, rows));
+      } else if (exportFormat === 'xlsx') {
         downloadExcel(`kidscon_schools_overview_${date}.xlsx`, headers, rows);
+      } else {
+        await downloadWord(`kidscon_schools_overview_${date}.docx`, 'Schools Overview Report', headers, rows);
       }
       setExported('schools');
       setTimeout(() => setExported(null), 3000);
@@ -216,15 +301,20 @@ export default function AdminExportPage() {
             Download registration data instantly in your preferred format.
           </p>
         </div>
+        {/* Format Picker: CSV | Excel | Word */}
         <div className="flex items-center gap-1 bg-md-surface-container-low border border-md-outline/10 p-1.5 rounded-full shadow-sm">
-          <button 
-            onClick={() => setExportFormat('csv')} 
-            className={`px-5 py-2 rounded-full text-sm font-bold tracking-wide transition-colors ${exportFormat === 'csv' ? 'bg-md-primary text-md-on-primary shadow-sm' : 'text-md-on-surface-variant hover:bg-md-surface-container'}`}
+          <button
+            onClick={() => setExportFormat('csv')}
+            className={`px-4 py-2 rounded-full text-sm font-bold tracking-wide transition-colors ${exportFormat === 'csv' ? 'bg-md-primary text-md-on-primary shadow-sm' : 'text-md-on-surface-variant hover:bg-md-surface-container'}`}
           >CSV</button>
-          <button 
-            onClick={() => setExportFormat('xlsx')} 
-            className={`px-5 py-2 rounded-full text-sm font-bold tracking-wide transition-colors ${exportFormat === 'xlsx' ? 'bg-md-primary text-md-on-primary shadow-sm' : 'text-md-on-surface-variant hover:bg-md-surface-container'}`}
+          <button
+            onClick={() => setExportFormat('xlsx')}
+            className={`px-4 py-2 rounded-full text-sm font-bold tracking-wide transition-colors ${exportFormat === 'xlsx' ? 'bg-md-primary text-md-on-primary shadow-sm' : 'text-md-on-surface-variant hover:bg-md-surface-container'}`}
           >Excel</button>
+          <button
+            onClick={() => setExportFormat('docx')}
+            className={`px-4 py-2 rounded-full text-sm font-bold tracking-wide transition-colors ${exportFormat === 'docx' ? 'bg-md-primary text-md-on-primary shadow-sm' : 'text-md-on-surface-variant hover:bg-md-surface-container'}`}
+          >Word</button>
         </div>
       </div>
 
@@ -324,7 +414,11 @@ export default function AdminExportPage() {
                   ) : (
                     <Download size={14} />
                   )}
-                  {exported === school.id ? 'Exported!' : (school.students?.length || 0) === 0 ? 'No Data' : `Export ${exportFormat.toUpperCase()}`}
+                  {exported === school.id
+                    ? 'Exported!'
+                    : (school.students?.length || 0) === 0
+                    ? 'No Data'
+                    : `Export ${exportFormat.toUpperCase()}`}
                 </button>
               </div>
             ))}
@@ -337,12 +431,14 @@ export default function AdminExportPage() {
 }
 
 // ── Reusable export card ───────────────────────────────────────────────────────
-function ExportCard({ icon, title, description, color, loading, done, onExport, disabled, format = 'csv' }) {
+function ExportCard({ icon, title, description, color, loading, done, onExport, disabled, format = 'xlsx' }) {
   const colorMap = {
     primary: 'bg-md-primary/10 text-md-primary',
     secondary: 'bg-md-secondary-container text-md-on-secondary-container',
     tertiary: 'bg-md-tertiary/10 text-md-tertiary',
   };
+
+  const FormatIcon = format === 'docx' ? FileText : FileSpreadsheet;
 
   return (
     <Card className="rounded-[28px] border border-md-outline/5 bg-md-surface-container-low shadow-none hover:shadow-md transition-shadow duration-300">
@@ -370,7 +466,7 @@ function ExportCard({ icon, title, description, color, loading, done, onExport, 
           ) : done ? (
             <CheckCircle2 size={16} />
           ) : (
-            <FileSpreadsheet size={16} />
+            <FormatIcon size={16} />
           )}
           {loading ? 'Preparing…' : done ? 'Downloaded!' : `Download ${format.toUpperCase()}`}
         </button>

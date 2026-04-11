@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import * as XLSX from 'xlsx';
+import { Document, Packer, Paragraph, Table as DocxTable, TableRow as DocxTableRow, TableCell as DocxTableCell, TextRun, HeadingLevel, WidthType, AlignmentType, BorderStyle } from 'docx';
 import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/Table';
@@ -40,11 +41,60 @@ function downloadExcel(filename, headers, rows) {
   XLSX.writeFile(wb, filename);
 }
 
+async function downloadWord(filename, title, headers, rows) {
+  const border = { style: BorderStyle.SINGLE, size: 1, color: 'CCCCCC' };
+  const cellBorders = { top: border, bottom: border, left: border, right: border };
+
+  const headerRow = new DocxTableRow({
+    tableHeader: true,
+    children: headers.map((h) =>
+      new DocxTableCell({
+        borders: cellBorders,
+        shading: { fill: '6750A4' },
+        children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: String(h), bold: true, color: 'FFFFFF', size: 20 })] })],
+      })
+    ),
+  });
+
+  const dataRows = rows.map((row, i) =>
+    new DocxTableRow({
+      children: row.map((cell) =>
+        new DocxTableCell({
+          borders: cellBorders,
+          shading: { fill: i % 2 === 0 ? 'F8F4FF' : 'FFFFFF' },
+          children: [new Paragraph({ children: [new TextRun({ text: String(cell ?? ''), size: 18 })] })],
+        })
+      ),
+    })
+  );
+
+  const doc = new Document({
+    sections: [{
+      children: [
+        new Paragraph({ text: 'KIDSCON Registration', heading: HeadingLevel.HEADING_1, spacing: { after: 100 } }),
+        new Paragraph({ children: [new TextRun({ text: title, bold: true, size: 26, color: '6750A4' })], spacing: { after: 100 } }),
+        new Paragraph({ children: [new TextRun({ text: `Generated: ${new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}`, italics: true, color: '888888', size: 18 })], spacing: { after: 300 } }),
+        new DocxTable({ width: { size: 100, type: WidthType.PERCENTAGE }, rows: [headerRow, ...dataRows] }),
+      ],
+    }],
+  });
+
+  const blob = await Packer.toBlob(doc);
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
 export default function AdminSchoolsPage() {
   const navigate = useNavigate();
   const [schools, setSchools] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [exportFormat, setExportFormat] = useState('xlsx'); // 'csv' | 'xlsx'
+  const [exportFormat, setExportFormat] = useState('xlsx'); // 'csv' | 'xlsx' | 'docx'
 
   const fetchRegisteredSchools = async () => {
     try {
@@ -120,7 +170,7 @@ export default function AdminSchoolsPage() {
     }
   };
 
-  const handleExportSchools = () => {
+  const handleExportSchools = async () => {
     try {
       const headers = ['School Name', 'Category', 'Contact Person', 'Phone', 'Address', 'Total Students', 'Total Teachers', 'Registered On'];
       const rows = schools.map((s) => [
@@ -135,10 +185,11 @@ export default function AdminSchoolsPage() {
       ]);
       const date = new Date().toISOString().slice(0, 10);
       if (exportFormat === 'csv') {
-        const csv = buildCsv(headers, rows);
-        downloadCsv(`kidscon_registered_schools_${date}.csv`, csv);
-      } else {
+        downloadCsv(`kidscon_registered_schools_${date}.csv`, buildCsv(headers, rows));
+      } else if (exportFormat === 'xlsx') {
         downloadExcel(`kidscon_registered_schools_${date}.xlsx`, headers, rows);
+      } else {
+        await downloadWord(`kidscon_registered_schools_${date}.docx`, 'Registered Schools Report', headers, rows);
       }
     } catch (err) {
       console.error('Export failed:', err);
@@ -164,6 +215,10 @@ export default function AdminSchoolsPage() {
               onClick={() => setExportFormat('xlsx')} 
               className={`px-4 py-1.5 rounded-full text-sm font-bold tracking-wide transition-colors ${exportFormat === 'xlsx' ? 'bg-md-primary text-md-on-primary shadow-sm' : 'text-md-on-surface-variant hover:bg-md-surface-container'}`}
             >Excel</button>
+            <button 
+              onClick={() => setExportFormat('docx')} 
+              className={`px-4 py-1.5 rounded-full text-sm font-bold tracking-wide transition-colors ${exportFormat === 'docx' ? 'bg-md-primary text-md-on-primary shadow-sm' : 'text-md-on-surface-variant hover:bg-md-surface-container'}`}
+            >Word</button>
           </div>
           <Button onClick={handleExportSchools} variant="outline" className="gap-2 shadow-sm font-semibold" disabled={loading || schools.length === 0}>
             <Download size={18} /> Export as {exportFormat.toUpperCase()}
