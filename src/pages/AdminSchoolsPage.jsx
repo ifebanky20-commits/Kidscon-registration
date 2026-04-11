@@ -233,7 +233,7 @@ export default function AdminSchoolsPage() {
                         </TableCell>
                         <TableCell className="text-right py-3 sticky right-0 group-hover:bg-md-surface-container bg-md-surface-container-low transition-colors duration-200">
                           <div className="flex items-center justify-end gap-2">
-                            <Button variant="ghost" size="sm" asChild className="opacity-0 group-hover:opacity-100 transition-opacity bg-md-secondary-container/50 hover:bg-md-secondary-container">
+                            <Button variant="ghost" size="sm" asChild className="opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity bg-md-secondary-container/50 hover:bg-md-secondary-container">
                               <Link to={`/admin/school/${school.id}`} className="gap-2" onClick={(e) => e.stopPropagation()}>
                                 Details <ChevronRight size={16} />
                               </Link>
@@ -242,7 +242,7 @@ export default function AdminSchoolsPage() {
                               variant="ghost" 
                               size="sm" 
                               onClick={(e) => handleDeleteSchool(e, school)}
-                              className="text-md-error hover:bg-md-error/10 hover:text-md-error opacity-0 group-hover:opacity-100 transition-opacity"
+                              className="text-md-error hover:bg-md-error/10 hover:text-md-error opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
                             >
                               <Trash2 size={16} />
                             </Button>

@@ -7,7 +7,7 @@ export default function LandingPage() {
   return (
     <div className="flex flex-col items-center justify-center min-h-[calc(100vh-180px)] px-4">
 
-      <div className="w-full max-w-5xl flex flex-col lg:flex-row items-center gap-12 lg:gap-20 text-center lg:text-left relative z-10">
+      <div className="w-full max-w-5xl flex flex-col lg:flex-row items-center gap-8 lg:gap-20 text-center lg:text-left relative z-10 pt-6 lg:pt-0">
 
         {/* Left Content Area */}
         <div className="flex-1 space-y-8 max-w-2xl">
@@ -44,16 +44,15 @@ export default function LandingPage() {
           </div>
         </div>
 
-        {/* Right Hero Visuals */}
-        <div className="flex-1 relative w-full max-w-md lg:max-w-lg hidden md:block pt-12 lg:pt-0">
-          <div className="relative w-full aspect-[4/3] lg:aspect-[1.1/1] bg-md-surface-container rounded-[48px] overflow-hidden md-elevation-1 animate-in fade-in slide-in-from-right-8 duration-[700ms] ease-md group ring-4 ring-white/50 shadow-2xl">
+        {/* Hero Image — visible on ALL screen sizes (was hidden on mobile) */}
+        <div className="w-full max-w-sm mx-auto md:flex-1 md:max-w-md lg:max-w-lg">
+          <div className="relative w-full aspect-[4/3] lg:aspect-[1.1/1] bg-md-surface-container rounded-[32px] md:rounded-[48px] overflow-hidden md-elevation-1 animate-in fade-in slide-in-from-right-8 duration-[700ms] ease-md group ring-4 ring-white/50 shadow-2xl">
             <img 
               src={eventPic} 
               alt="Kidscon Event Audience" 
               className="absolute inset-0 w-full h-full object-cover contrast-[1.05] saturate-[1.15] brightness-[1.03] transition-transform duration-[700ms] ease-md group-hover:scale-105" 
               style={{ imageRendering: '-webkit-optimize-contrast' }}
             />
-            {/* Subtle overlay for depth */}
             <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-black/0 pointer-events-none"></div>
           </div>
         </div>
