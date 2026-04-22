@@ -5,7 +5,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/Table';
 import { Button } from '../components/ui/Button';
-import { School, Trash2, ChevronRight, Download, ChevronLeft } from 'lucide-react';
+import Pagination from '../components/ui/Pagination';
+import { School, Trash2, ChevronRight, Download } from 'lucide-react';
 
 const PAGE_SIZE = 10;
 
@@ -298,45 +299,7 @@ export default function AdminSchoolsPage() {
               </div>
 
               {/* Pagination */}
-              {pageCount > 1 && (
-                <div className="flex items-center justify-center gap-2 pt-6">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setPage((p) => Math.max(0, p - 1))}
-                    disabled={page === 0}
-                    className="gap-1 font-semibold"
-                  >
-                    <ChevronLeft size={16} /> Prev
-                  </Button>
-
-                  <div className="flex items-center gap-1">
-                    {Array.from({ length: pageCount }, (_, i) => (
-                      <button
-                        key={i}
-                        onClick={() => setPage(i)}
-                        className={`w-9 h-9 rounded-full text-sm font-bold transition-all ${
-                          i === page
-                            ? 'bg-md-primary text-md-on-primary shadow-sm'
-                            : 'text-md-on-surface-variant hover:bg-md-surface-container'
-                        }`}
-                      >
-                        {i + 1}
-                      </button>
-                    ))}
-                  </div>
-
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setPage((p) => Math.min(pageCount - 1, p + 1))}
-                    disabled={page === pageCount - 1}
-                    className="gap-1 font-semibold"
-                  >
-                    Next <ChevronRight size={16} />
-                  </Button>
-                </div>
-              )}
+              <Pagination page={page} pageCount={pageCount} onPageChange={setPage} />
             </>
           )}
         </div>
