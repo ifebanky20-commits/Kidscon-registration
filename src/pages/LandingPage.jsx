@@ -24,20 +24,20 @@ function getTimeLeft(dateStr) {
 function CountdownUnit({ value, label }) {
   const display = String(value).padStart(2, '0');
   return (
-    <div className="flex flex-col items-center gap-2">
+    <div className="flex flex-col items-center gap-1 sm:gap-2">
       <div
-        className="relative w-20 h-20 md:w-24 md:h-24 rounded-2xl flex items-center justify-center overflow-hidden"
+        className="relative w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-xl sm:rounded-2xl flex items-center justify-center overflow-hidden"
         style={{
           background: 'linear-gradient(145deg, var(--md-primary, #6750A4) 0%, var(--md-tertiary, #7D5260) 100%)',
           boxShadow: '0 8px 32px rgba(103,80,164,0.35), inset 0 1px 0 rgba(255,255,255,0.18)',
         }}
       >
-        <div className="absolute inset-x-0 top-0 h-1/2 bg-white/10 rounded-t-2xl pointer-events-none" />
-        <span className="relative text-3xl md:text-4xl font-extrabold text-white tracking-tighter tabular-nums">
+        <div className="absolute inset-x-0 top-0 h-1/2 bg-white/10 rounded-t-xl sm:rounded-t-2xl pointer-events-none" />
+        <span className="relative text-2xl sm:text-3xl md:text-4xl font-extrabold text-white tracking-tighter tabular-nums">
           {display}
         </span>
       </div>
-      <span className="text-xs md:text-sm font-semibold uppercase tracking-widest text-md-on-surface-variant">
+      <span className="text-[10px] sm:text-xs md:text-sm font-semibold uppercase tracking-widest text-md-on-surface-variant">
         {label}
       </span>
     </div>
@@ -124,38 +124,34 @@ export default function LandingPage() {
         </div>
       </div>
 
-      {/* ── Countdown Timer ── */}
-      <div className="w-full max-w-5xl mt-16 relative z-10 animate-in fade-in slide-in-from-bottom-8 duration-[700ms] delay-[450ms] ease-md fill-mode-both">
-        <div className="bg-md-surface-container-low rounded-[40px] p-8 md:p-12 ring-1 ring-md-outline/10 md-elevation-1 text-center">
-          {timeLeft.expired ? (
-            <p className="text-2xl font-bold text-md-primary">🎉 The event is live today!</p>
-          ) : (
-            <>
-              <p className="text-sm font-semibold uppercase tracking-widest text-md-on-surface-variant mb-2">
-                Next Program
-              </p>
-              <h2 className="text-2xl md:text-3xl font-extrabold text-md-on-background tracking-tight mb-8">
-                {event.name} —{' '}
-                {new Date(event.date + 'T00:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
-              </h2>
+      {/* ── Countdown Timer — only shown when the event is in the future ── */}
+      {!timeLeft.expired && (
+        <div className="w-full max-w-5xl mt-16 relative z-10 animate-in fade-in slide-in-from-bottom-8 duration-[700ms] delay-[450ms] ease-md fill-mode-both">
+          <div className="bg-md-surface-container-low rounded-[40px] p-6 sm:p-8 md:p-12 ring-1 ring-md-outline/10 md-elevation-1 text-center">
+            <p className="text-xs sm:text-sm font-semibold uppercase tracking-widest text-md-on-surface-variant mb-2">
+              Next Program
+            </p>
+            <h2 className="text-xl sm:text-2xl md:text-3xl font-extrabold text-md-on-background tracking-tight mb-6 sm:mb-8">
+              {event.name} —{' '}
+              {new Date(event.date + 'T00:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+            </h2>
 
-              <div className="flex items-start justify-center gap-4 md:gap-8">
-                <CountdownUnit value={timeLeft.days}    label="Days"    />
-                <span className="text-4xl md:text-5xl font-extrabold text-md-primary mt-3 select-none">:</span>
-                <CountdownUnit value={timeLeft.hours}   label="Hours"   />
-                <span className="text-4xl md:text-5xl font-extrabold text-md-primary mt-3 select-none">:</span>
-                <CountdownUnit value={timeLeft.minutes} label="Minutes" />
-                <span className="text-4xl md:text-5xl font-extrabold text-md-primary mt-3 select-none">:</span>
-                <CountdownUnit value={timeLeft.seconds} label="Seconds" />
-              </div>
+            <div className="flex items-start justify-center gap-2 sm:gap-4 md:gap-8">
+              <CountdownUnit value={timeLeft.days}    label="Days"    />
+              <span className="text-2xl sm:text-4xl md:text-5xl font-extrabold text-md-primary mt-2 sm:mt-3 select-none">:</span>
+              <CountdownUnit value={timeLeft.hours}   label="Hours"   />
+              <span className="text-2xl sm:text-4xl md:text-5xl font-extrabold text-md-primary mt-2 sm:mt-3 select-none">:</span>
+              <CountdownUnit value={timeLeft.minutes} label="Minutes" />
+              <span className="text-2xl sm:text-4xl md:text-5xl font-extrabold text-md-primary mt-2 sm:mt-3 select-none">:</span>
+              <CountdownUnit value={timeLeft.seconds} label="Seconds" />
+            </div>
 
-              <p className="mt-8 text-sm text-md-on-surface-variant/70">
-                Register your school now to secure your spot before the big day!
-              </p>
-            </>
-          )}
+            <p className="mt-6 sm:mt-8 text-xs sm:text-sm text-md-on-surface-variant/70">
+              Register your school now to secure your spot before the big day!
+            </p>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* CEO Welcome Section */}
       <div className="w-full max-w-5xl mt-12 mb-8 relative z-10 animate-in fade-in slide-in-from-bottom-8 duration-[700ms] delay-[500ms] ease-md fill-mode-both">

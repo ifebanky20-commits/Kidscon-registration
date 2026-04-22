@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Outlet, NavLink, Link, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, School, Users, Download, LogOut, Menu, X } from 'lucide-react';
+import { LayoutDashboard, School, Users, Download, LogOut, Menu, X, Settings2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import logo from '../assets/logo.jpeg';
 
@@ -15,10 +15,11 @@ export default function AdminLayout() {
   };
 
   const navItems = [
-    { label: 'Dashboard', icon: LayoutDashboard, path: '/admin', exact: true },
-    { label: 'Verified Schools', icon: School, path: '/admin/schools' },
-    { label: 'Students', icon: Users, path: '/admin/students' },
-    { label: 'Export Data', icon: Download, path: '/admin/export' },
+    { label: 'Dashboard',       icon: LayoutDashboard, path: '/admin',          exact: true },
+    { label: 'Verified Schools', icon: School,          path: '/admin/schools'              },
+    { label: 'Students',         icon: Users,           path: '/admin/students'             },
+    { label: 'Export Data',      icon: Download,        path: '/admin/export'               },
+    { label: 'Settings',         icon: Settings2,       path: '/admin/settings'             },
   ];
 
   const NavContent = ({ onClickItem }) => (

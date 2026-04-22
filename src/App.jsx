@@ -9,6 +9,7 @@ import SchoolDetailPage from './pages/SchoolDetailPage';
 import AdminSchoolsPage from './pages/AdminSchoolsPage';
 import AdminStudentsPage from './pages/AdminStudentsPage';
 import AdminExportPage from './pages/AdminExportPage';
+import AdminSettingsPage from './pages/AdminSettingsPage';
 import PrintLayoutPage from './pages/PrintLayoutPage';
 import AdminLoginPage from './pages/AdminLoginPage';
 import ProtectedRoute from './components/layout/ProtectedRoute';
@@ -37,6 +38,7 @@ function App() {
         <Route path="schools" element={<AdminSchoolsPage />} />
         <Route path="students" element={<AdminStudentsPage />} />
         <Route path="export" element={<AdminExportPage />} />
+        <Route path="settings" element={<AdminSettingsPage />} />
       </Route>
 
       {/* Standalone Prints */}
