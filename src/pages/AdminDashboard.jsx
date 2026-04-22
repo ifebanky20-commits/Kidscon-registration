@@ -4,12 +4,47 @@ import { supabase } from '../lib/supabase';
 import { Card, CardContent } from '../components/ui/Card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/Table';
 import { Button } from '../components/ui/Button';
-import { Users, School, ChevronRight, Trash2 } from 'lucide-react';
+import { Users, School, ChevronRight, Trash2, CalendarDays, CheckCircle2, AlertCircle } from 'lucide-react';
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
   const [schools, setSchools] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  // ── Next Program state ──
+  const [eventName, setEventName] = useState('');
+  const [eventDate, setEventDate] = useState('');
+  const [eventSaving, setEventSaving] = useState(false);
+  const [eventToast, setEventToast] = useState(null); // { type: 'success'|'error', msg }
+
+  const fetchEventSettings = async () => {
+    const { data } = await supabase
+      .from('app_settings')
+      .select('value')
+      .eq('key', 'next_event')
+      .single();
+    if (data?.value) {
+      const parsed = JSON.parse(data.value);
+      setEventName(parsed.name || '');
+      setEventDate(parsed.date || '');
+    }
+  };
+
+  const handleSaveEvent = async () => {
+    if (!eventDate) return;
+    setEventSaving(true);
+    setEventToast(null);
+    const { error } = await supabase
+      .from('app_settings')
+      .upsert({ key: 'next_event', value: JSON.stringify({ name: eventName, date: eventDate }) });
+    setEventSaving(false);
+    if (error) {
+      setEventToast({ type: 'error', msg: 'Failed to save — ' + error.message });
+    } else {
+      setEventToast({ type: 'success', msg: 'Event updated! The countdown will reflect this immediately.' });
+    }
+    setTimeout(() => setEventToast(null), 4000);
+  };
 
   const fetchDashboardData = async () => {
     try {
@@ -34,6 +69,7 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     fetchDashboardData();
+    fetchEventSettings();
 
     // Subscribe to real-time additions (to instantly reflect registrations on the dashboard)
     const channel = supabase
@@ -94,6 +130,73 @@ export default function AdminDashboard() {
           <p className="text-md-on-surface-variant font-medium mt-1">Real-time registration tracking powered by Supabase.</p>
         </div>
       </div>
+
+      {/* ── Next Program Card ── */}
+      <Card className="rounded-[28px] border-none bg-md-surface-container-low ring-1 ring-md-outline/10 md-elevation-1">
+        <CardContent className="p-8">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-10 h-10 rounded-xl bg-md-primary/10 flex items-center justify-center">
+              <CalendarDays size={20} className="text-md-primary" />
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-md-on-background tracking-tight">Next Program</h2>
+              <p className="text-sm text-md-on-surface-variant">Updates the countdown timer on the landing page instantly.</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-sm font-semibold text-md-on-surface-variant uppercase tracking-wide" htmlFor="event-name">
+                Event Name
+              </label>
+              <input
+                id="event-name"
+                type="text"
+                value={eventName}
+                onChange={(e) => setEventName(e.target.value)}
+                placeholder="e.g. KIDSCON 2026"
+                className="px-4 py-3 rounded-xl bg-md-surface-container border border-md-outline/30 text-md-on-background placeholder:text-md-on-surface-variant/50 focus:outline-none focus:ring-2 focus:ring-md-primary/50 transition font-medium"
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-sm font-semibold text-md-on-surface-variant uppercase tracking-wide" htmlFor="event-date">
+                Event Date
+              </label>
+              <input
+                id="event-date"
+                type="date"
+                value={eventDate}
+                onChange={(e) => setEventDate(e.target.value)}
+                className="px-4 py-3 rounded-xl bg-md-surface-container border border-md-outline/30 text-md-on-background focus:outline-none focus:ring-2 focus:ring-md-primary/50 transition font-medium"
+              />
+            </div>
+          </div>
+
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+            <Button
+              variant="primary"
+              onClick={handleSaveEvent}
+              disabled={eventSaving || !eventDate}
+              className="h-11 px-6"
+            >
+              {eventSaving ? 'Saving...' : 'Save & Update Countdown'}
+            </Button>
+
+            {eventToast && (
+              <div className={`flex items-center gap-2 text-sm font-medium px-4 py-2 rounded-xl animate-in fade-in duration-300 ${
+                eventToast.type === 'success'
+                  ? 'bg-emerald-500/10 text-emerald-600'
+                  : 'bg-md-error/10 text-md-error'
+              }`}>
+                {eventToast.type === 'success'
+                  ? <CheckCircle2 size={16} />
+                  : <AlertCircle size={16} />}
+                {eventToast.msg}
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {/* Stat Card 1 */}

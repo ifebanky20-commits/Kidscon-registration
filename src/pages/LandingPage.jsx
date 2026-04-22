@@ -1,14 +1,16 @@
 import { Link } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { Button } from '../components/ui/Button';
+import { supabase } from '../lib/supabase';
 import ceoPic from '../assets/ceo.jpg';
 import eventPic from '../assets/event.jpg';
 
-// Target: May 23, 2026
-const EVENT_DATE = new Date('2026-05-23T00:00:00');
+// Fallback if Supabase hasn't been set up yet
+const FALLBACK_EVENT = { name: 'KIDSCON', date: '2026-05-23' };
 
-function getTimeLeft() {
-  const diff = EVENT_DATE - new Date();
+function getTimeLeft(dateStr) {
+  const target = new Date(dateStr + 'T00:00:00');
+  const diff = target - new Date();
   if (diff <= 0) return { days: 0, hours: 0, minutes: 0, seconds: 0, expired: true };
   return {
     days: Math.floor(diff / (1000 * 60 * 60 * 24)),
@@ -30,7 +32,6 @@ function CountdownUnit({ value, label }) {
           boxShadow: '0 8px 32px rgba(103,80,164,0.35), inset 0 1px 0 rgba(255,255,255,0.18)',
         }}
       >
-        {/* Subtle top-half gloss */}
         <div className="absolute inset-x-0 top-0 h-1/2 bg-white/10 rounded-t-2xl pointer-events-none" />
         <span className="relative text-3xl md:text-4xl font-extrabold text-white tracking-tighter tabular-nums">
           {display}
@@ -44,12 +45,30 @@ function CountdownUnit({ value, label }) {
 }
 
 export default function LandingPage() {
-  const [timeLeft, setTimeLeft] = useState(getTimeLeft());
+  const [event, setEvent] = useState(FALLBACK_EVENT);
+  const [timeLeft, setTimeLeft] = useState(getTimeLeft(FALLBACK_EVENT.date));
 
+  // Fetch the event from Supabase once on mount
   useEffect(() => {
-    const id = setInterval(() => setTimeLeft(getTimeLeft()), 1000);
-    return () => clearInterval(id);
+    supabase
+      .from('app_settings')
+      .select('value')
+      .eq('key', 'next_event')
+      .single()
+      .then(({ data }) => {
+        if (data?.value) {
+          const parsed = JSON.parse(data.value);
+          setEvent(parsed);
+          setTimeLeft(getTimeLeft(parsed.date));
+        }
+      });
   }, []);
+
+  // Tick every second
+  useEffect(() => {
+    const id = setInterval(() => setTimeLeft(getTimeLeft(event.date)), 1000);
+    return () => clearInterval(id);
+  }, [event.date]);
 
   return (
     <div className="flex flex-col items-center justify-center min-h-[calc(100vh-180px)] px-4">
@@ -116,7 +135,8 @@ export default function LandingPage() {
                 Next Program
               </p>
               <h2 className="text-2xl md:text-3xl font-extrabold text-md-on-background tracking-tight mb-8">
-                KIDSCON — May 23, 2026
+                {event.name} —{' '}
+                {new Date(event.date + 'T00:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
               </h2>
 
               <div className="flex items-start justify-center gap-4 md:gap-8">
