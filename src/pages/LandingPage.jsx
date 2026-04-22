@@ -1,9 +1,56 @@
 import { Link } from 'react-router-dom';
+import { useState, useEffect } from 'react';
 import { Button } from '../components/ui/Button';
 import ceoPic from '../assets/ceo.jpg';
 import eventPic from '../assets/event.jpg';
 
+// Target: May 23, 2026
+const EVENT_DATE = new Date('2026-05-23T00:00:00');
+
+function getTimeLeft() {
+  const diff = EVENT_DATE - new Date();
+  if (diff <= 0) return { days: 0, hours: 0, minutes: 0, seconds: 0, expired: true };
+  return {
+    days: Math.floor(diff / (1000 * 60 * 60 * 24)),
+    hours: Math.floor((diff / (1000 * 60 * 60)) % 24),
+    minutes: Math.floor((diff / (1000 * 60)) % 60),
+    seconds: Math.floor((diff / 1000) % 60),
+    expired: false,
+  };
+}
+
+function CountdownUnit({ value, label }) {
+  const display = String(value).padStart(2, '0');
+  return (
+    <div className="flex flex-col items-center gap-2">
+      <div
+        className="relative w-20 h-20 md:w-24 md:h-24 rounded-2xl flex items-center justify-center overflow-hidden"
+        style={{
+          background: 'linear-gradient(145deg, var(--md-primary, #6750A4) 0%, var(--md-tertiary, #7D5260) 100%)',
+          boxShadow: '0 8px 32px rgba(103,80,164,0.35), inset 0 1px 0 rgba(255,255,255,0.18)',
+        }}
+      >
+        {/* Subtle top-half gloss */}
+        <div className="absolute inset-x-0 top-0 h-1/2 bg-white/10 rounded-t-2xl pointer-events-none" />
+        <span className="relative text-3xl md:text-4xl font-extrabold text-white tracking-tighter tabular-nums">
+          {display}
+        </span>
+      </div>
+      <span className="text-xs md:text-sm font-semibold uppercase tracking-widest text-md-on-surface-variant">
+        {label}
+      </span>
+    </div>
+  );
+}
+
 export default function LandingPage() {
+  const [timeLeft, setTimeLeft] = useState(getTimeLeft());
+
+  useEffect(() => {
+    const id = setInterval(() => setTimeLeft(getTimeLeft()), 1000);
+    return () => clearInterval(id);
+  }, []);
+
   return (
     <div className="flex flex-col items-center justify-center min-h-[calc(100vh-180px)] px-4">
 
@@ -58,8 +105,40 @@ export default function LandingPage() {
         </div>
       </div>
 
+      {/* ── Countdown Timer ── */}
+      <div className="w-full max-w-5xl mt-16 relative z-10 animate-in fade-in slide-in-from-bottom-8 duration-[700ms] delay-[450ms] ease-md fill-mode-both">
+        <div className="bg-md-surface-container-low rounded-[40px] p-8 md:p-12 ring-1 ring-md-outline/10 md-elevation-1 text-center">
+          {timeLeft.expired ? (
+            <p className="text-2xl font-bold text-md-primary">🎉 The event is live today!</p>
+          ) : (
+            <>
+              <p className="text-sm font-semibold uppercase tracking-widest text-md-on-surface-variant mb-2">
+                Next Program
+              </p>
+              <h2 className="text-2xl md:text-3xl font-extrabold text-md-on-background tracking-tight mb-8">
+                KIDSCON — May 23, 2026
+              </h2>
+
+              <div className="flex items-start justify-center gap-4 md:gap-8">
+                <CountdownUnit value={timeLeft.days}    label="Days"    />
+                <span className="text-4xl md:text-5xl font-extrabold text-md-primary mt-3 select-none">:</span>
+                <CountdownUnit value={timeLeft.hours}   label="Hours"   />
+                <span className="text-4xl md:text-5xl font-extrabold text-md-primary mt-3 select-none">:</span>
+                <CountdownUnit value={timeLeft.minutes} label="Minutes" />
+                <span className="text-4xl md:text-5xl font-extrabold text-md-primary mt-3 select-none">:</span>
+                <CountdownUnit value={timeLeft.seconds} label="Seconds" />
+              </div>
+
+              <p className="mt-8 text-sm text-md-on-surface-variant/70">
+                Register your school now to secure your spot before the big day!
+              </p>
+            </>
+          )}
+        </div>
+      </div>
+
       {/* CEO Welcome Section */}
-      <div className="w-full max-w-5xl mt-20 mb-8 relative z-10 animate-in fade-in slide-in-from-bottom-8 duration-[700ms] delay-[500ms] ease-md fill-mode-both">
+      <div className="w-full max-w-5xl mt-12 mb-8 relative z-10 animate-in fade-in slide-in-from-bottom-8 duration-[700ms] delay-[500ms] ease-md fill-mode-both">
         <div className="bg-md-surface-container-low rounded-[40px] p-8 md:p-12 flex flex-col md:flex-row items-center gap-10 md-elevation-1 ring-1 ring-md-outline/5 transition-transform duration-500 hover:shadow-lg">
           <div className="w-40 h-40 md:w-56 md:h-56 shrink-0 rounded-full overflow-hidden border-8 border-white dark:border-md-background shadow-xl">
             <img src={ceoPic} alt="CEO of KIDSCON Multicreations International" className="w-full h-full object-cover object-top" />
