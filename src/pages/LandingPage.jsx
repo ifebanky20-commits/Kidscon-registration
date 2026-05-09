@@ -78,45 +78,38 @@ export default function LandingPage() {
         {/* Left Content Area */}
         <div className="flex-1 space-y-8 max-w-2xl">
           <div className="space-y-6">
-            <div className="inline-flex items-center px-4 py-1.5 rounded-full bg-md-secondary-container text-md-on-secondary-container text-sm font-medium mb-4 animate-in fade-in slide-in-from-bottom-2 duration-500 ease-md">
+            <div className="inline-flex items-center px-4 py-1.5 rounded-full bg-md-secondary-container text-md-on-secondary-container text-xs font-medium mb-4 animate-in fade-in slide-in-from-bottom-2 duration-500 ease-md">
               <span className="flex w-2 h-2 rounded-full bg-md-primary mr-2 animate-pulse"></span>
               2026 Event Registration Now Open
             </div>
 
-            <h1 className="text-5xl md:text-6xl lg:text-[72px] font-extrabold text-md-on-background tracking-tighter leading-[1.1] animate-in fade-in slide-in-from-bottom-4 duration-500 delay-100 ease-md fill-mode-both">
+            <h1 className="text-4xl font-bold text-md-on-background tracking-tighter leading-[1.1] animate-in fade-in slide-in-from-bottom-4 duration-500 delay-100 ease-md fill-mode-both">
               Pre-register Students for <span className="text-md-primary bg-md-primary/10 px-2 rounded-2xl inline-block -rotate-1 mt-1">KIDSCON</span> Events with Ease
             </h1>
 
-            <p className="text-xl md:text-2xl font-medium text-md-on-surface-variant max-w-xl mx-auto lg:mx-0 leading-relaxed animate-in fade-in slide-in-from-bottom-4 duration-500 delay-200 ease-md fill-mode-both">
-              A fast, secure, and stress-free way for schools to register students before event day—saving time, reducing paperwork, and making participation seamless.
-            </p>
 
-            <p className="text-base md:text-lg text-md-on-surface-variant/80 max-w-xl mx-auto lg:mx-0 leading-relaxed animate-in fade-in slide-in-from-bottom-4 duration-500 delay-[300ms] ease-md fill-mode-both">
+            <p className="text-sm text-justify text-md-on-surface-variant/80 max-w-xl mx-auto lg:mx-0 leading-relaxed animate-in fade-in slide-in-from-bottom-4 duration-500 delay-[300ms] ease-md fill-mode-both">
+              A fast, secure, and stress-free way for schools to register students before event day—saving time, reducing paperwork, and making participation seamless.
               KIDSCON Register helps school administrators submit student and teacher details online in advance, so event-day check-in is faster, more organized, and hassle-free for everyone.
             </p>
           </div>
 
-          <div className="flex flex-col sm:flex-row items-center gap-4 justify-center lg:justify-start pt-4 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-[400ms] ease-md fill-mode-both">
-            <Link to="/register" className="w-full sm:w-auto">
-              <Button variant="primary" size="lg" className="w-full h-14 md-elevation-2">
-                Register Your School
-              </Button>
-            </Link>
-            <Link to="/admin" className="w-full sm:w-auto">
-              <Button variant="secondary" size="lg" className="w-full h-14">
-                Admin Portal
-              </Button>
-            </Link>
-          </div>
+          {/* <Link to="/register" className="w-full sm:w-auto">
+            <Button variant="primary" size="lg" className="w-full h-14 md-elevation-2">
+              Register Your School
+            </Button>
+          </Link> */}
+
+
         </div>
 
         {/* Hero Image — visible on ALL screen sizes (was hidden on mobile) */}
         <div className="w-full max-w-sm mx-auto md:flex-1 md:max-w-md lg:max-w-lg">
           <div className="relative w-full aspect-[4/3] lg:aspect-[1.1/1] bg-md-surface-container rounded-[32px] md:rounded-[48px] overflow-hidden md-elevation-1 animate-in fade-in slide-in-from-right-8 duration-[700ms] ease-md group ring-4 ring-white/50 shadow-2xl">
-            <img 
-              src={eventPic} 
-              alt="Kidscon Event Audience" 
-              className="absolute inset-0 w-full h-full object-cover contrast-[1.05] saturate-[1.15] brightness-[1.03] transition-transform duration-[700ms] ease-md group-hover:scale-105" 
+            <img
+              src={eventPic}
+              alt="Kidscon Event Audience"
+              className="absolute inset-0 w-full h-full object-cover contrast-[1.05] saturate-[1.15] brightness-[1.03] transition-transform duration-[700ms] ease-md group-hover:scale-105"
               style={{ imageRendering: '-webkit-optimize-contrast' }}
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-black/0 pointer-events-none"></div>
@@ -137,9 +130,9 @@ export default function LandingPage() {
             </h2>
 
             <div className="flex items-start justify-center gap-2 sm:gap-4 md:gap-8">
-              <CountdownUnit value={timeLeft.days}    label="Days"    />
+              <CountdownUnit value={timeLeft.days} label="Days" />
               <span className="text-2xl sm:text-4xl md:text-5xl font-extrabold text-md-primary mt-2 sm:mt-3 select-none">:</span>
-              <CountdownUnit value={timeLeft.hours}   label="Hours"   />
+              <CountdownUnit value={timeLeft.hours} label="Hours" />
               <span className="text-2xl sm:text-4xl md:text-5xl font-extrabold text-md-primary mt-2 sm:mt-3 select-none">:</span>
               <CountdownUnit value={timeLeft.minutes} label="Minutes" />
               <span className="text-2xl sm:text-4xl md:text-5xl font-extrabold text-md-primary mt-2 sm:mt-3 select-none">:</span>
