@@ -13,6 +13,8 @@ import {
   CheckCircle2,
   AlertCircle,
   Loader2,
+  CalendarDays,
+  ChevronDown,
 } from 'lucide-react';
 
 // ─── CSV helper ────────────────────────────────────────────────────────────────
@@ -144,13 +146,26 @@ export default function AdminExportPage() {
   const [exportFormat, setExportFormat] = useState('xlsx'); // 'csv' | 'xlsx' | 'docx'
   const [error, setError] = useState('');
 
+  // Event filter
+  const [events, setEvents] = useState([]);
+  const [selectedEventId, setSelectedEventId] = useState(null);
+
+  // Fetch events for picker
   useEffect(() => {
-    fetchData();
+    supabase
+      .from('events')
+      .select('id, name, date')
+      .order('date', { ascending: false })
+      .then(({ data }) => setEvents(data || []));
   }, []);
 
-  const fetchData = async () => {
+  useEffect(() => {
+    fetchData(selectedEventId);
+  }, [selectedEventId]);
+
+  const fetchData = async (eventId) => {
     try {
-      const { data: schoolData, error: schoolErr } = await supabase
+      let query = supabase
         .from('schools')
         .select(`
           id,
@@ -169,6 +184,10 @@ export default function AdminExportPage() {
           )
         `)
         .order('name', { ascending: true });
+
+      if (eventId) query = query.eq('event_id', eventId);
+
+      const { data: schoolData, error: schoolErr } = await query;
 
       if (schoolErr) throw schoolErr;
 
@@ -301,20 +320,39 @@ export default function AdminExportPage() {
             Download registration data instantly in your preferred format.
           </p>
         </div>
-        {/* Format Picker: CSV | Excel | Word */}
-        <div className="flex items-center gap-1 bg-md-surface-container-low border border-md-outline/10 p-1.5 rounded-full shadow-sm">
-          <button
-            onClick={() => setExportFormat('csv')}
-            className={`px-4 py-2 rounded-full text-sm font-bold tracking-wide transition-colors ${exportFormat === 'csv' ? 'bg-md-primary text-md-on-primary shadow-sm' : 'text-md-on-surface-variant hover:bg-md-surface-container'}`}
-          >CSV</button>
-          <button
-            onClick={() => setExportFormat('xlsx')}
-            className={`px-4 py-2 rounded-full text-sm font-bold tracking-wide transition-colors ${exportFormat === 'xlsx' ? 'bg-md-primary text-md-on-primary shadow-sm' : 'text-md-on-surface-variant hover:bg-md-surface-container'}`}
-          >Excel</button>
-          <button
-            onClick={() => setExportFormat('docx')}
-            className={`px-4 py-2 rounded-full text-sm font-bold tracking-wide transition-colors ${exportFormat === 'docx' ? 'bg-md-primary text-md-on-primary shadow-sm' : 'text-md-on-surface-variant hover:bg-md-surface-container'}`}
-          >Word</button>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+          {/* Event filter */}
+          {events.length > 0 && (
+            <div className="flex items-center gap-2">
+              <CalendarDays size={16} className="text-md-on-surface-variant" />
+              <div className="relative">
+                <select
+                  value={selectedEventId || ''}
+                  onChange={(e) => setSelectedEventId(e.target.value || null)}
+                  className="appearance-none h-10 pl-4 pr-10 rounded-full border border-md-outline/20 bg-md-surface-container text-md-on-background text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-md-primary/40 transition cursor-pointer"
+                >
+                  <option value="">All Events</option>
+                  {events.map((ev) => <option key={ev.id} value={ev.id}>{ev.name}</option>)}
+                </select>
+                <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-md-on-surface-variant pointer-events-none" />
+              </div>
+            </div>
+          )}
+          {/* Format Picker: CSV | Excel | Word */}
+          <div className="flex items-center gap-1 bg-md-surface-container-low border border-md-outline/10 p-1.5 rounded-full shadow-sm">
+            <button
+              onClick={() => setExportFormat('csv')}
+              className={`px-4 py-2 rounded-full text-sm font-bold tracking-wide transition-colors ${exportFormat === 'csv' ? 'bg-md-primary text-md-on-primary shadow-sm' : 'text-md-on-surface-variant hover:bg-md-surface-container'}`}
+            >CSV</button>
+            <button
+              onClick={() => setExportFormat('xlsx')}
+              className={`px-4 py-2 rounded-full text-sm font-bold tracking-wide transition-colors ${exportFormat === 'xlsx' ? 'bg-md-primary text-md-on-primary shadow-sm' : 'text-md-on-surface-variant hover:bg-md-surface-container'}`}
+            >Excel</button>
+            <button
+              onClick={() => setExportFormat('docx')}
+              className={`px-4 py-2 rounded-full text-sm font-bold tracking-wide transition-colors ${exportFormat === 'docx' ? 'bg-md-primary text-md-on-primary shadow-sm' : 'text-md-on-surface-variant hover:bg-md-surface-container'}`}
+            >Word</button>
+          </div>
         </div>
       </div>
 

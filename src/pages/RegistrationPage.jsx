@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import * as XLSX from 'xlsx';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '../components/ui/Button';
@@ -7,11 +7,35 @@ import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '../compone
 import { Input } from '../components/ui/Input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/Table';
 import { Modal } from '../components/ui/Modal';
-import { Plus, Trash2, Upload, BookOpen, Users, UserPlus, CheckCircle, CheckCircle2, School, AlertCircle, FileCheck, ShieldCheck } from 'lucide-react';
+import { Plus, Trash2, Upload, BookOpen, Users, UserPlus, CheckCircle, CheckCircle2, School, AlertCircle, FileCheck, ShieldCheck, MapPin, CalendarDays, ArrowLeft } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 export default function RegistrationPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const eventId = searchParams.get('event');
+
+  // Selected event info
+  const [selectedEvent, setSelectedEvent] = useState(null);
+  const [eventLoading, setEventLoading] = useState(true);
+  const [eventError, setEventError] = useState(false);
+
+  useEffect(() => {
+    if (!eventId) { setEventLoading(false); setEventError(true); return; }
+    supabase
+      .from('events')
+      .select('id, name, location, date, is_open')
+      .eq('id', eventId)
+      .single()
+      .then(({ data, error }) => {
+        if (error || !data || !data.is_open) {
+          setEventError(true);
+        } else {
+          setSelectedEvent(data);
+        }
+        setEventLoading(false);
+      });
+  }, [eventId]);
   const [step, setStep] = useState(() => {
     const saved = localStorage.getItem('kidscon_reg_step');
     return saved ? JSON.parse(saved) : 1;
@@ -173,6 +197,7 @@ export default function RegistrationPage() {
           address: schoolInfo.address,
           contact_person: schoolInfo.contactPerson,
           phone: schoolInfo.phone,
+          event_id: eventId || null,
         });
 
       if (schoolError) throw schoolError;
@@ -213,8 +238,57 @@ export default function RegistrationPage() {
 
   const stepIcons = [BookOpen, Users, UserPlus, CheckCircle];
 
+  // ── Event loading / error gates ─────────────────────────────────────────
+  if (eventLoading) {
+    return (
+      <div className="flex items-center justify-center py-32">
+        <div className="w-12 h-12 rounded-full border-4 border-md-secondary-container border-t-md-primary animate-spin" />
+      </div>
+    );
+  }
+
+  if (eventError || !selectedEvent) {
+    return (
+      <div className="max-w-lg mx-auto text-center py-24 space-y-6">
+        <CalendarDays size={48} className="mx-auto text-md-on-surface-variant/40" />
+        <h2 className="text-2xl font-bold text-md-on-background">No event selected</h2>
+        <p className="text-md-on-surface-variant">
+          This registration link is missing or invalid. Please go back to the home page and choose a program.
+        </p>
+        <Link to="/">
+          <button className="inline-flex items-center gap-2 mt-2 px-6 py-3 rounded-full bg-md-primary text-md-on-primary font-semibold hover:bg-md-primary/90 transition-colors">
+            <ArrowLeft size={18} /> Back to Home
+          </button>
+        </Link>
+      </div>
+    );
+  }
+
+  const formattedEventDate = new Date(selectedEvent.date + 'T00:00:00').toLocaleDateString('en-US', {
+    month: 'long', day: 'numeric', year: 'numeric',
+  });
+
   return (
     <div className="max-w-4xl mx-auto relative z-10">
+      
+      {/* Event context banner */}
+      <div className="mb-8 bg-md-secondary-container/40 rounded-[20px] px-6 py-4 flex flex-col sm:flex-row sm:items-center gap-3 ring-1 ring-md-outline/10 animate-in fade-in slide-in-from-top-2 duration-500 ease-md">
+        <div className="flex items-center gap-2 text-md-on-secondary-container font-bold text-sm">
+          <CalendarDays size={16} className="text-md-primary shrink-0" />
+          Registering for:
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="font-extrabold text-md-on-background">{selectedEvent.name}</span>
+          <span className="flex items-center gap-1 text-sm text-md-on-surface-variant font-medium">
+            <MapPin size={13} className="text-md-primary" />
+            {selectedEvent.location}
+          </span>
+          <span className="flex items-center gap-1 text-sm text-md-on-surface-variant font-medium">
+            <CalendarDays size={13} className="text-md-primary" />
+            {formattedEventDate}
+          </span>
+        </div>
+      </div>
       
       {/* Decorative Blobs */}
       <div className="fixed top-20 left-10 w-[300px] h-[300px] bg-md-secondary-container/40 blur-[80px] rounded-full -z-10 mix-blend-multiply" />

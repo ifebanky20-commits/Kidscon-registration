@@ -6,7 +6,7 @@ import { supabase } from '../lib/supabase';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/Table';
 import { Button } from '../components/ui/Button';
 import Pagination from '../components/ui/Pagination';
-import { School, Trash2, ChevronRight, Download, GitMerge, X, CheckCircle2, AlertTriangle, MapPin, User, Phone, Users, ChevronDown, ChevronUp, Search } from 'lucide-react';
+import { School, Trash2, ChevronRight, Download, GitMerge, X, CheckCircle2, AlertTriangle, MapPin, User, Phone, Users, ChevronDown, ChevronUp, Search, CalendarDays } from 'lucide-react';
 
 const PAGE_SIZE = 10;
 
@@ -471,9 +471,22 @@ export default function AdminSchoolsPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
 
+  // Event filter
+  const [events, setEvents] = useState([]);
+  const [selectedEventId, setSelectedEventId] = useState(null);
+
   const [page, setPage] = useState(0);
   const [totalCount, setTotalCount] = useState(0);
   const pageCount = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
+
+  // Fetch events for the filter picker
+  useEffect(() => {
+    supabase
+      .from('events')
+      .select('id, name, date')
+      .order('date', { ascending: false })
+      .then(({ data }) => setEvents(data || []));
+  }, []);
 
   // Debounce search — reset to page 0 on new query
   useEffect(() => {
@@ -484,7 +497,7 @@ export default function AdminSchoolsPage() {
     return () => clearTimeout(t);
   }, [searchTerm]);
 
-  const fetchRegisteredSchools = useCallback(async (p, search) => {
+  const fetchRegisteredSchools = useCallback(async (p, search, eventId) => {
     setLoading(true);
     const from = p * PAGE_SIZE;
     const to = from + PAGE_SIZE - 1;
@@ -498,6 +511,7 @@ export default function AdminSchoolsPage() {
       .range(from, to);
 
     if (search) query = query.ilike('name', `%${search}%`);
+    if (eventId) query = query.eq('event_id', eventId);
 
     const { data, count, error } = await query;
     if (!error) {
@@ -508,22 +522,22 @@ export default function AdminSchoolsPage() {
   }, []);
 
   useEffect(() => {
-    fetchRegisteredSchools(0, '');
+    fetchRegisteredSchools(0, '', selectedEventId);
 
     // Real-time subscription
     const channel = supabase
       .channel('registered-schools-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'schools' },  () => fetchRegisteredSchools(page, debouncedSearch))
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'students' }, () => fetchRegisteredSchools(page, debouncedSearch))
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'teachers' }, () => fetchRegisteredSchools(page, debouncedSearch))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'schools' },  () => fetchRegisteredSchools(page, debouncedSearch, selectedEventId))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'students' }, () => fetchRegisteredSchools(page, debouncedSearch, selectedEventId))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'teachers' }, () => fetchRegisteredSchools(page, debouncedSearch, selectedEventId))
       .subscribe();
 
     return () => supabase.removeChannel(channel);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [selectedEventId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    fetchRegisteredSchools(page, debouncedSearch);
-  }, [page, debouncedSearch, fetchRegisteredSchools]);
+    fetchRegisteredSchools(page, debouncedSearch, selectedEventId);
+  }, [page, debouncedSearch, selectedEventId, fetchRegisteredSchools]);
 
   const handleDeleteSchool = async (e, school) => {
     e.stopPropagation();
@@ -544,12 +558,14 @@ export default function AdminSchoolsPage() {
   };
 
   const handleExportSchools = async () => {
-    // Export ALL schools (not just current page) for full data export
+    // Export ALL schools for selected event (not just current page)
     try {
-      const { data: allSchools } = await supabase
+      let query = supabase
         .from('schools')
         .select('id, name, category, address, contact_person, phone, created_at, students(count), teachers(count)')
         .order('created_at', { ascending: false });
+      if (selectedEventId) query = query.eq('event_id', selectedEventId);
+      const { data: allSchools } = await query;
       const headers = ['School Name', 'Category', 'Contact Person', 'Phone', 'Address', 'Total Students', 'Total Teachers', 'Registered On'];
       const rows = (allSchools || []).map((s) => [
         s.name, s.category || '', s.contact_person || '', s.phone || '', s.address || '',
@@ -576,9 +592,26 @@ export default function AdminSchoolsPage() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold text-md-on-background tracking-tight">Registered Schools</h1>
-          <p className="text-md-on-surface-variant font-medium mt-1">A comprehensive master list of all schools that have officially registered for the event.</p>
+          <p className="text-md-on-surface-variant font-medium mt-1">A comprehensive list of all schools that have registered for the selected event.</p>
         </div>
         <div className="flex flex-wrap items-center gap-3 shrink-0">
+          {/* Event filter */}
+          {events.length > 0 && (
+            <div className="flex items-center gap-2">
+              <CalendarDays size={16} className="text-md-on-surface-variant" />
+              <div className="relative">
+                <select
+                  value={selectedEventId || ''}
+                  onChange={(e) => { setSelectedEventId(e.target.value || null); setPage(0); }}
+                  className="appearance-none h-10 pl-4 pr-10 rounded-full border border-md-outline/20 bg-md-surface-container text-md-on-background text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-md-primary/40 transition cursor-pointer"
+                >
+                  <option value="">All Events</option>
+                  {events.map((ev) => <option key={ev.id} value={ev.id}>{ev.name}</option>)}
+                </select>
+                <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-md-on-surface-variant pointer-events-none" />
+              </div>
+            </div>
+          )}
           <Button
             onClick={() => setMergeOpen(true)}
             variant="outline"

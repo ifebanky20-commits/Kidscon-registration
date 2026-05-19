@@ -4,50 +4,115 @@ import { supabase } from '../lib/supabase';
 import { Card, CardContent } from '../components/ui/Card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/Table';
 import { Button } from '../components/ui/Button';
-import { Users, School, ChevronRight, Trash2 } from 'lucide-react';
+import { Users, School, ChevronRight, Trash2, CalendarDays, ChevronDown } from 'lucide-react';
+
+// ── Tiny event picker ─────────────────────────────────────────────────────────
+function EventPicker({ events, selectedId, onChange }) {
+  const selected = events.find((e) => e.id === selectedId);
+  return (
+    <div className="relative inline-block">
+      <select
+        value={selectedId || ''}
+        onChange={(e) => onChange(e.target.value || null)}
+        className="appearance-none h-10 pl-4 pr-10 rounded-full border border-md-outline/20 bg-md-surface-container text-md-on-background text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-md-primary/40 transition cursor-pointer"
+      >
+        <option value="">All Events</option>
+        {events.map((ev) => (
+          <option key={ev.id} value={ev.id}>{ev.name}</option>
+        ))}
+      </select>
+      <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-md-on-surface-variant pointer-events-none" />
+    </div>
+  );
+}
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
+
+  const [events, setEvents]           = useState([]);
+  const [selectedEventId, setSelectedEventId] = useState(null);
 
   const [totalSchools, setTotalSchools]   = useState(0);
   const [totalStudents, setTotalStudents] = useState(0);
   const [recent, setRecent]               = useState([]);
   const [loading, setLoading]             = useState(true);
 
-  // Fetch aggregate counts
-  const fetchTotals = useCallback(async () => {
-    const [{ count: sc }, { count: st }] = await Promise.all([
-      supabase.from('schools').select('*', { count: 'exact', head: true }),
-      supabase.from('students').select('*', { count: 'exact', head: true }),
-    ]);
+  // Fetch events for the picker
+  useEffect(() => {
+    supabase
+      .from('events')
+      .select('id, name, date')
+      .order('date', { ascending: false })
+      .then(({ data }) => {
+        const evts = data || [];
+        setEvents(evts);
+        // Default to the most recent event
+        if (evts.length > 0) setSelectedEventId(evts[0].id);
+      });
+  }, []);
+
+  // Fetch aggregate counts filtered by event
+  const fetchTotals = useCallback(async (eventId) => {
+    let schoolQ = supabase.from('schools').select('*', { count: 'exact', head: true });
+    let studentQ = supabase.from('students').select('*', { count: 'exact', head: true });
+
+    if (eventId) {
+      schoolQ = schoolQ.eq('event_id', eventId);
+      // Students: count those belonging to schools of this event
+      const { data: schoolIds } = await supabase
+        .from('schools')
+        .select('id')
+        .eq('event_id', eventId);
+      const ids = (schoolIds || []).map((s) => s.id);
+      if (ids.length > 0) {
+        studentQ = studentQ.in('school_id', ids);
+      } else {
+        setTotalStudents(0);
+        const [{ count: sc }] = await Promise.all([schoolQ]);
+        setTotalSchools(sc ?? 0);
+        return;
+      }
+    }
+
+    const [{ count: sc }, { count: st }] = await Promise.all([schoolQ, studentQ]);
     setTotalSchools(sc ?? 0);
     setTotalStudents(st ?? 0);
   }, []);
 
-  // Fetch only the 5 most recently registered schools
-  const fetchRecent = useCallback(async () => {
+  // Fetch 5 most recent schools filtered by event
+  const fetchRecent = useCallback(async (eventId) => {
     setLoading(true);
-    const { data, error } = await supabase
+    let query = supabase
       .from('schools')
       .select('id, name, created_at, students(count)')
       .order('created_at', { ascending: false })
       .limit(5);
+
+    if (eventId) query = query.eq('event_id', eventId);
+
+    const { data, error } = await query;
     if (!error) setRecent(data || []);
     setLoading(false);
   }, []);
 
   useEffect(() => {
-    fetchTotals();
-    fetchRecent();
+    fetchTotals(selectedEventId);
+    fetchRecent(selectedEventId);
 
     const channel = supabase
       .channel('dashboard-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'schools' },  () => { fetchTotals(); fetchRecent(); })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'students' }, () => { fetchTotals(); fetchRecent(); })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'schools' }, () => {
+        fetchTotals(selectedEventId);
+        fetchRecent(selectedEventId);
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'students' }, () => {
+        fetchTotals(selectedEventId);
+        fetchRecent(selectedEventId);
+      })
       .subscribe();
 
     return () => supabase.removeChannel(channel);
-  }, [fetchTotals, fetchRecent]);
+  }, [selectedEventId, fetchTotals, fetchRecent]);
 
   const handleDeleteSchool = async (e, school) => {
     e.stopPropagation();
@@ -62,6 +127,8 @@ export default function AdminDashboard() {
     }
   };
 
+  const selectedEvent = events.find((e) => e.id === selectedEventId);
+
   return (
     <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500 ease-md pb-12">
 
@@ -70,6 +137,13 @@ export default function AdminDashboard() {
           <h1 className="text-3xl font-bold text-md-on-background tracking-tight">Dashboard Overview</h1>
           <p className="text-md-on-surface-variant font-medium mt-1">Real-time registration tracking powered by Supabase.</p>
         </div>
+        {/* Event Filter */}
+        {events.length > 0 && (
+          <div className="flex items-center gap-2 shrink-0">
+            <CalendarDays size={16} className="text-md-on-surface-variant" />
+            <EventPicker events={events} selectedId={selectedEventId} onChange={setSelectedEventId} />
+          </div>
+        )}
       </div>
 
       {/* Stat Cards */}
@@ -78,7 +152,9 @@ export default function AdminDashboard() {
           <CardContent className="p-8 pb-10">
             <div className="flex items-center justify-between">
               <div>
-                <p className="font-semibold text-sm tracking-wide uppercase opacity-80 mb-1">Total Schools</p>
+                <p className="font-semibold text-sm tracking-wide uppercase opacity-80 mb-1">
+                  {selectedEvent ? `Schools · ${selectedEvent.name}` : 'Total Schools'}
+                </p>
                 <p className="text-5xl font-extrabold tracking-tight">{totalSchools}</p>
               </div>
               <div className="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center transform transition-transform group-hover:scale-110 group-hover:rotate-6 duration-500">
@@ -92,7 +168,9 @@ export default function AdminDashboard() {
           <CardContent className="p-8 pb-10">
             <div className="flex items-center justify-between">
               <div>
-                <p className="font-semibold text-sm tracking-wide uppercase opacity-80 mb-1">Total Students</p>
+                <p className="font-semibold text-sm tracking-wide uppercase opacity-80 mb-1">
+                  {selectedEvent ? `Students · ${selectedEvent.name}` : 'Total Students'}
+                </p>
                 <p className="text-5xl font-extrabold tracking-tight">{totalStudents}</p>
               </div>
               <div className="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center transform transition-transform group-hover:scale-110 group-hover:-rotate-6 duration-500">
@@ -133,7 +211,7 @@ export default function AdminDashboard() {
               {recent.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={4} className="text-center py-10 text-md-on-surface-variant font-medium">
-                    Waiting for initial registrations…
+                    {selectedEvent ? `No registrations yet for ${selectedEvent.name}.` : 'Waiting for initial registrations…'}
                   </TableCell>
                 </TableRow>
               ) : (

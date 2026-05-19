@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/Table';
 import { Button } from '../components/ui/Button';
 import Pagination from '../components/ui/Pagination';
-import { Users, Search } from 'lucide-react';
+import { Users, Search, CalendarDays, ChevronDown } from 'lucide-react';
 
 const PAGE_SIZE = 15;
 
@@ -13,9 +13,22 @@ export default function AdminStudentsPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
 
+  // Event filter
+  const [events, setEvents] = useState([]);
+  const [selectedEventId, setSelectedEventId] = useState(null);
+
   const [page, setPage] = useState(0);
   const [totalCount, setTotalCount] = useState(0);
   const pageCount = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
+
+  // Fetch events for picker
+  useEffect(() => {
+    supabase
+      .from('events')
+      .select('id, name, date')
+      .order('date', { ascending: false })
+      .then(({ data }) => setEvents(data || []));
+  }, []);
 
   // Debounce search so we don't hit Supabase on every keystroke
   useEffect(() => {
@@ -26,10 +39,27 @@ export default function AdminStudentsPage() {
     return () => clearTimeout(t);
   }, [searchTerm]);
 
-  const fetchStudents = useCallback(async (p, search) => {
+  const fetchStudents = useCallback(async (p, search, eventId) => {
     setLoading(true);
     const from = p * PAGE_SIZE;
     const to = from + PAGE_SIZE - 1;
+
+    // If an event is selected, first get the school IDs for that event
+    let schoolIds = null;
+    if (eventId) {
+      const { data: schools } = await supabase
+        .from('schools')
+        .select('id')
+        .eq('event_id', eventId);
+      schoolIds = (schools || []).map((s) => s.id);
+      if (schoolIds.length === 0) {
+        // No schools for this event — return empty result
+        setStudents([]);
+        setTotalCount(0);
+        setLoading(false);
+        return;
+      }
+    }
 
     let query = supabase
       .from('students')
@@ -37,11 +67,8 @@ export default function AdminStudentsPage() {
       .order('created_at', { ascending: false })
       .range(from, to);
 
-    if (search) {
-      // ilike filter — searches student name; Supabase doesn't do multi-column OR easily via JS SDK
-      // so we filter on name only server-side, then do a local filter for school/class
-      query = query.ilike('name', `%${search}%`);
-    }
+    if (search) query = query.ilike('name', `%${search}%`);
+    if (schoolIds) query = query.in('school_id', schoolIds);
 
     const { data, count, error } = await query;
     if (!error) {
@@ -52,8 +79,8 @@ export default function AdminStudentsPage() {
   }, []);
 
   useEffect(() => {
-    fetchStudents(page, debouncedSearch);
-  }, [page, debouncedSearch, fetchStudents]);
+    fetchStudents(page, debouncedSearch, selectedEventId);
+  }, [page, debouncedSearch, selectedEventId, fetchStudents]);
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-300 ease-md pb-12">
@@ -61,11 +88,29 @@ export default function AdminStudentsPage() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold text-md-on-background tracking-tight">Master Student Directory</h1>
-          <p className="text-md-on-surface-variant font-medium mt-1">View and search across all registered students from all schools.</p>
+          <p className="text-md-on-surface-variant font-medium mt-1">View and search across all registered students.</p>
         </div>
-        <div className="bg-md-tertiary/10 text-md-tertiary px-4 py-2 rounded-full font-bold text-sm flex items-center gap-2 shrink-0">
-          <Users size={16} />
-          {totalCount} Total Students
+        <div className="flex items-center gap-3 flex-wrap">
+          <div className="bg-md-tertiary/10 text-md-tertiary px-4 py-2 rounded-full font-bold text-sm flex items-center gap-2 shrink-0">
+            <Users size={16} />
+            {totalCount} Students
+          </div>
+          {events.length > 0 && (
+            <div className="flex items-center gap-2">
+              <CalendarDays size={16} className="text-md-on-surface-variant" />
+              <div className="relative">
+                <select
+                  value={selectedEventId || ''}
+                  onChange={(e) => { setSelectedEventId(e.target.value || null); setPage(0); }}
+                  className="appearance-none h-10 pl-4 pr-10 rounded-full border border-md-outline/20 bg-md-surface-container text-md-on-background text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-md-primary/40 transition cursor-pointer"
+                >
+                  <option value="">All Events</option>
+                  {events.map((ev) => <option key={ev.id} value={ev.id}>{ev.name}</option>)}
+                </select>
+                <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-md-on-surface-variant pointer-events-none" />
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

@@ -4,10 +4,9 @@ import { Button } from '../components/ui/Button';
 import { supabase } from '../lib/supabase';
 import ceoPic from '../assets/ceo.jpg';
 import eventPic from '../assets/event.jpg';
+import { MapPin, CalendarDays, ArrowRight, CalendarX } from 'lucide-react';
 
-// Fallback if Supabase hasn't been set up yet
-const FALLBACK_EVENT = { name: 'KIDSCON', date: '2026-05-23' };
-
+// ── Countdown helpers ─────────────────────────────────────────────────────────
 function getTimeLeft(dateStr) {
   const target = new Date(dateStr + 'T00:00:00');
   const diff = target - new Date();
@@ -24,51 +23,97 @@ function getTimeLeft(dateStr) {
 function CountdownUnit({ value, label }) {
   const display = String(value).padStart(2, '0');
   return (
-    <div className="flex flex-col items-center gap-1 sm:gap-2">
+    <div className="flex flex-col items-center gap-1">
       <div
-        className="relative w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-xl sm:rounded-2xl flex items-center justify-center overflow-hidden"
+        className="relative w-12 h-12 sm:w-14 sm:h-14 rounded-xl flex items-center justify-center overflow-hidden"
         style={{
           background: 'linear-gradient(145deg, var(--md-primary, #6750A4) 0%, var(--md-tertiary, #7D5260) 100%)',
-          boxShadow: '0 8px 32px rgba(103,80,164,0.35), inset 0 1px 0 rgba(255,255,255,0.18)',
+          boxShadow: '0 4px 16px rgba(103,80,164,0.3), inset 0 1px 0 rgba(255,255,255,0.18)',
         }}
       >
-        <div className="absolute inset-x-0 top-0 h-1/2 bg-white/10 rounded-t-xl sm:rounded-t-2xl pointer-events-none" />
-        <span className="relative text-2xl sm:text-3xl md:text-4xl font-extrabold text-white tracking-tighter tabular-nums">
+        <div className="absolute inset-x-0 top-0 h-1/2 bg-white/10 rounded-t-xl pointer-events-none" />
+        <span className="relative text-xl sm:text-2xl font-extrabold text-white tracking-tighter tabular-nums">
           {display}
         </span>
       </div>
-      <span className="text-[10px] sm:text-xs md:text-sm font-semibold uppercase tracking-widest text-md-on-surface-variant">
+      <span className="text-[9px] font-semibold uppercase tracking-widest text-md-on-surface-variant">
         {label}
       </span>
     </div>
   );
 }
 
-export default function LandingPage() {
-  const [event, setEvent] = useState(FALLBACK_EVENT);
-  const [timeLeft, setTimeLeft] = useState(getTimeLeft(FALLBACK_EVENT.date));
+// ── Single event card with its own live countdown ─────────────────────────────
+function EventCard({ event }) {
+  const [timeLeft, setTimeLeft] = useState(getTimeLeft(event.date));
 
-  // Fetch the event from Supabase once on mount
-  useEffect(() => {
-    supabase
-      .from('app_settings')
-      .select('value')
-      .eq('key', 'next_event')
-      .single()
-      .then(({ data }) => {
-        if (data?.value) {
-          const parsed = JSON.parse(data.value);
-          setEvent(parsed);
-          setTimeLeft(getTimeLeft(parsed.date));
-        }
-      });
-  }, []);
-
-  // Tick every second
   useEffect(() => {
     const id = setInterval(() => setTimeLeft(getTimeLeft(event.date)), 1000);
     return () => clearInterval(id);
   }, [event.date]);
+
+  const formattedDate = new Date(event.date + 'T00:00:00').toLocaleDateString('en-US', {
+    weekday: 'short', month: 'long', day: 'numeric', year: 'numeric',
+  });
+
+  return (
+    <div className="bg-md-surface-container-low rounded-[32px] p-6 sm:p-8 ring-1 ring-md-outline/10 md-elevation-1 flex flex-col gap-6 hover:shadow-lg transition-shadow duration-300">
+      {/* Event info */}
+      <div className="space-y-2">
+        <h3 className="text-xl font-bold text-md-on-background tracking-tight">{event.name}</h3>
+
+        <div className="flex items-center gap-2 text-sm text-md-on-surface-variant font-medium">
+          <MapPin size={14} className="shrink-0 text-md-primary" />
+          <span>{event.location}</span>
+        </div>
+
+        <div className="flex items-center gap-2 text-sm text-md-on-surface-variant font-medium">
+          <CalendarDays size={14} className="shrink-0 text-md-primary" />
+          <span>{formattedDate}</span>
+        </div>
+      </div>
+
+      {/* Mini countdown */}
+      {!timeLeft.expired && (
+        <div className="flex items-center gap-2 sm:gap-3">
+          <CountdownUnit value={timeLeft.days} label="Days" />
+          <span className="text-xl font-extrabold text-md-primary pb-4">:</span>
+          <CountdownUnit value={timeLeft.hours} label="Hrs" />
+          <span className="text-xl font-extrabold text-md-primary pb-4">:</span>
+          <CountdownUnit value={timeLeft.minutes} label="Min" />
+          <span className="text-xl font-extrabold text-md-primary pb-4">:</span>
+          <CountdownUnit value={timeLeft.seconds} label="Sec" />
+        </div>
+      )}
+
+      {/* Register button */}
+      <Link to={`/register?event=${event.id}`} className="mt-auto">
+        <Button className="w-full gap-2 h-12 text-base font-bold md-elevation-1">
+          Register for this Event <ArrowRight size={18} />
+        </Button>
+      </Link>
+    </div>
+  );
+}
+
+// ── Main page ─────────────────────────────────────────────────────────────────
+export default function LandingPage() {
+  const [openEvents, setOpenEvents] = useState([]);
+  const [loadingEvents, setLoadingEvents] = useState(true);
+
+  useEffect(() => {
+    const today = new Date().toISOString().slice(0, 10);
+    supabase
+      .from('events')
+      .select('id, name, location, date')
+      .eq('is_open', true)
+      .gte('date', today)
+      .order('date', { ascending: true })
+      .then(({ data }) => {
+        setOpenEvents(data || []);
+        setLoadingEvents(false);
+      });
+  }, []);
 
   return (
     <div className="flex flex-col items-center justify-center min-h-[calc(100vh-180px)] px-4">
@@ -87,23 +132,14 @@ export default function LandingPage() {
               Pre-register Students for <span className="text-md-primary bg-md-primary/10 px-2 rounded-2xl inline-block -rotate-1 mt-1">KIDSCON</span> Events with Ease
             </h1>
 
-
             <p className="text-sm text-justify text-md-on-surface-variant/80 max-w-xl mx-auto lg:mx-0 leading-relaxed animate-in fade-in slide-in-from-bottom-4 duration-500 delay-[300ms] ease-md fill-mode-both">
               A fast, secure, and stress-free way for schools to register students before event day—saving time, reducing paperwork, and making participation seamless.
               KIDSCON Register helps school administrators submit student and teacher details online in advance, so event-day check-in is faster, more organized, and hassle-free for everyone.
             </p>
           </div>
-
-          {/* <Link to="/register" className="w-full sm:w-auto">
-            <Button variant="primary" size="lg" className="w-full h-14 md-elevation-2">
-              Register Your School
-            </Button>
-          </Link> */}
-
-
         </div>
 
-        {/* Hero Image — visible on ALL screen sizes (was hidden on mobile) */}
+        {/* Hero Image */}
         <div className="w-full max-w-sm mx-auto md:flex-1 md:max-w-md lg:max-w-lg">
           <div className="relative w-full aspect-[4/3] lg:aspect-[1.1/1] bg-md-surface-container rounded-[32px] md:rounded-[48px] overflow-hidden md-elevation-1 animate-in fade-in slide-in-from-right-8 duration-[700ms] ease-md group ring-4 ring-white/50 shadow-2xl">
             <img
@@ -117,34 +153,36 @@ export default function LandingPage() {
         </div>
       </div>
 
-      {/* ── Countdown Timer — only shown when the event is in the future ── */}
-      {!timeLeft.expired && (
-        <div className="w-full max-w-5xl mt-16 relative z-10 animate-in fade-in slide-in-from-bottom-8 duration-[700ms] delay-[450ms] ease-md fill-mode-both">
-          <div className="bg-md-surface-container-low rounded-[40px] p-6 sm:p-8 md:p-12 ring-1 ring-md-outline/10 md-elevation-1 text-center">
-            <p className="text-xs sm:text-sm font-semibold uppercase tracking-widest text-md-on-surface-variant mb-2">
-              Next Program
-            </p>
-            <h2 className="text-xl sm:text-2xl md:text-3xl font-extrabold text-md-on-background tracking-tight mb-6 sm:mb-8">
-              {event.name} —{' '}
-              {new Date(event.date + 'T00:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
-            </h2>
+      {/* ── Open Events Section ───────────────────────────────────────────────── */}
+      <div className="w-full max-w-5xl mt-16 relative z-10 animate-in fade-in slide-in-from-bottom-8 duration-[700ms] delay-[450ms] ease-md fill-mode-both">
 
-            <div className="flex items-start justify-center gap-2 sm:gap-4 md:gap-8">
-              <CountdownUnit value={timeLeft.days} label="Days" />
-              <span className="text-2xl sm:text-4xl md:text-5xl font-extrabold text-md-primary mt-2 sm:mt-3 select-none">:</span>
-              <CountdownUnit value={timeLeft.hours} label="Hours" />
-              <span className="text-2xl sm:text-4xl md:text-5xl font-extrabold text-md-primary mt-2 sm:mt-3 select-none">:</span>
-              <CountdownUnit value={timeLeft.minutes} label="Minutes" />
-              <span className="text-2xl sm:text-4xl md:text-5xl font-extrabold text-md-primary mt-2 sm:mt-3 select-none">:</span>
-              <CountdownUnit value={timeLeft.seconds} label="Seconds" />
-            </div>
-
-            <p className="mt-6 sm:mt-8 text-xs sm:text-sm text-md-on-surface-variant/70">
-              Register your school now to secure your spot before the big day!
-            </p>
-          </div>
+        <div className="mb-6 text-center lg:text-left">
+          <p className="text-xs font-semibold uppercase tracking-widest text-md-on-surface-variant mb-1">
+            Upcoming Programs
+          </p>
+          <h2 className="text-2xl font-extrabold text-md-on-background tracking-tight">
+            Choose Your Event
+          </h2>
         </div>
-      )}
+
+        {loadingEvents ? (
+          <div className="flex justify-center py-16">
+            <div className="w-10 h-10 rounded-full border-4 border-md-secondary-container border-t-md-primary animate-spin" />
+          </div>
+        ) : openEvents.length === 0 ? (
+          <div className="bg-md-surface-container-low rounded-[32px] p-10 ring-1 ring-md-outline/10 text-center">
+            <CalendarX size={36} className="mx-auto text-md-on-surface-variant/40 mb-3" />
+            <p className="font-bold text-md-on-surface-variant text-lg">No open registrations at this time</p>
+            <p className="text-sm text-md-on-surface-variant/70 mt-1">Check back soon for upcoming KIDSCON programs.</p>
+          </div>
+        ) : (
+          <div className={`grid gap-5 ${openEvents.length === 1 ? 'grid-cols-1 max-w-md mx-auto' : 'grid-cols-1 sm:grid-cols-2'}`}>
+            {openEvents.map((event) => (
+              <EventCard key={event.id} event={event} />
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* CEO Welcome Section */}
       <div className="w-full max-w-5xl mt-12 mb-8 relative z-10 animate-in fade-in slide-in-from-bottom-8 duration-[700ms] delay-[500ms] ease-md fill-mode-both">
