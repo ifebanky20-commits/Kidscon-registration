@@ -12,23 +12,14 @@ export default function Navbar() {
 
         <Link to="/" className="flex items-center gap-2 transition-transform active:scale-95 ease-md">
           <img src={logo} alt="KIDSCON Logo" className="h-12 w-auto" style={{ mixBlendMode: 'multiply' }} />
-          <span className="font-bold text-sm sm:text-base lg:text-lg text-md-on-background tracking-tight leading-tight max-w-[120px] sm:max-w-none">KIDSCON MULTICREATIONS INTERNATIONAL</span>
+          <span className="font-bold text-sm sm:text-base lg:text-lg text-md-on-background tracking-tight leading-tight max-w-[120px] sm:max-w-none">KIDSCON MULTICREATION INTERNATIONAL</span>
         </Link>
 
         <div className="flex items-center gap-2 md:gap-4">
-          {isAdmin ? (
-            <>
-              <Button variant="ghost" className="hidden sm:inline-flex" asChild>
-                <Link to="/">Exit Admin</Link>
-              </Button>
-            </>
-          ) : (
-            <>
-
-              <Link to="/register">
-                <Button variant="primary">Register Your School</Button>
-              </Link>
-            </>
+          {isAdmin && (
+            <Button variant="ghost" className="hidden sm:inline-flex" asChild>
+              <Link to="/">Exit Admin</Link>
+            </Button>
           )}
         </div>
       </div>

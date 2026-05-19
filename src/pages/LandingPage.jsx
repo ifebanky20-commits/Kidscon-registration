@@ -188,7 +188,7 @@ export default function LandingPage() {
       <div className="w-full max-w-5xl mt-12 mb-8 relative z-10 animate-in fade-in slide-in-from-bottom-8 duration-[700ms] delay-[500ms] ease-md fill-mode-both">
         <div className="bg-md-surface-container-low rounded-[40px] p-8 md:p-12 flex flex-col md:flex-row items-center gap-10 md-elevation-1 ring-1 ring-md-outline/5 transition-transform duration-500 hover:shadow-lg">
           <div className="w-40 h-40 md:w-56 md:h-56 shrink-0 rounded-full overflow-hidden border-8 border-white dark:border-md-background shadow-xl">
-            <img src={ceoPic} alt="CEO of KIDSCON Multicreations International" className="w-full h-full object-cover object-top" />
+            <img src={ceoPic} alt="CEO of KIDSCON Multicreation International" className="w-full h-full object-cover object-top" />
           </div>
           <div className="flex-1 text-center md:text-left space-y-5">
             <h2 className="text-3xl md:text-4xl font-extrabold text-md-on-background tracking-tight">Welcome to the Portal</h2>
