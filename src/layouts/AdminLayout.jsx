@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Outlet, NavLink, Link, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, School, Users, Download, LogOut, Menu, X, CalendarDays } from 'lucide-react';
+import { LayoutDashboard, School, Users, Download, LogOut, Menu, X, CalendarDays, BarChart3 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import logo from '../assets/logo.jpeg';
 
@@ -19,6 +19,7 @@ export default function AdminLayout() {
     { label: 'Schools',    icon: School,          path: '/admin/schools'             },
     { label: 'Students',   icon: Users,           path: '/admin/students'            },
     { label: 'Export Data',icon: Download,        path: '/admin/export'              },
+    { label: 'Analytics',  icon: BarChart3,       path: '/admin/analysis'            },
     { label: 'Events',     icon: CalendarDays,    path: '/admin/events'              },
   ];
 
