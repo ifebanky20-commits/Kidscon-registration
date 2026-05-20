@@ -10,17 +10,17 @@ import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend
 } from 'recharts';
+import { useEvent } from '../context/EventContext';
 
 const COLORS = ['#6750A4', '#7D5260', '#B3261E', '#4A4458', '#E8DEF8', '#21005D', '#31111D'];
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 export default function AdminAnalysisPage() {
-  const [events, setEvents] = useState([]);
+  const { events, selectedEventId, setSelectedEventId } = useEvent();
   const [rawSchools, setRawSchools] = useState([]);
   const [loading, setLoading] = useState(true);
 
   // Filters
-  const [selectedEventId, setSelectedEventId] = useState('');
   const [selectedYear, setSelectedYear] = useState('All');
   const [selectedMonth, setSelectedMonth] = useState('All'); // 0-11 string format
 
@@ -28,10 +28,6 @@ export default function AdminAnalysisPage() {
   useEffect(() => {
     async function init() {
       setLoading(true);
-      // Fetch events
-      const { data: evtData } = await supabase.from('events').select('id, name').order('date', { ascending: false });
-      if (evtData) setEvents(evtData);
-
       // Fetch all schools with student/teacher counts
       const { data: schoolData } = await supabase
         .from('schools')
@@ -182,8 +178,8 @@ export default function AdminAnalysisPage() {
           </div>
 
           <select
-            value={selectedEventId}
-            onChange={(e) => setSelectedEventId(e.target.value)}
+            value={selectedEventId || ''}
+            onChange={(e) => setSelectedEventId(e.target.value || null)}
             className="h-10 px-4 rounded-xl bg-md-surface-container border border-transparent text-md-on-background text-sm font-medium focus:outline-none focus:ring-2 focus:ring-md-primary/40 cursor-pointer hover:border-md-outline/20 transition"
           >
             <option value="">All Events</option>

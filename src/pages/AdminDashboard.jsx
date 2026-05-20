@@ -5,6 +5,7 @@ import { Card, CardContent } from '../components/ui/Card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/Table';
 import { Button } from '../components/ui/Button';
 import { Users, School, ChevronRight, Trash2, CalendarDays, ChevronDown } from 'lucide-react';
+import { useEvent } from '../context/EventContext';
 
 // ── Tiny event picker ─────────────────────────────────────────────────────────
 function EventPicker({ events, selectedId, onChange }) {
@@ -29,27 +30,12 @@ function EventPicker({ events, selectedId, onChange }) {
 export default function AdminDashboard() {
   const navigate = useNavigate();
 
-  const [events, setEvents]           = useState([]);
-  const [selectedEventId, setSelectedEventId] = useState(null);
+  const { events, selectedEventId, setSelectedEventId } = useEvent();
 
   const [totalSchools, setTotalSchools]   = useState(0);
   const [totalStudents, setTotalStudents] = useState(0);
   const [recent, setRecent]               = useState([]);
   const [loading, setLoading]             = useState(true);
-
-  // Fetch events for the picker
-  useEffect(() => {
-    supabase
-      .from('events')
-      .select('id, name, date')
-      .order('date', { ascending: false })
-      .then(({ data }) => {
-        const evts = data || [];
-        setEvents(evts);
-        // Default to the most recent event
-        if (evts.length > 0) setSelectedEventId(evts[0].id);
-      });
-  }, []);
 
   // Fetch aggregate counts filtered by event
   const fetchTotals = useCallback(async (eventId) => {

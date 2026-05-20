@@ -4,6 +4,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '.
 import { Button } from '../components/ui/Button';
 import Pagination from '../components/ui/Pagination';
 import { Users, Search, CalendarDays, ChevronDown } from 'lucide-react';
+import { useEvent } from '../context/EventContext';
 
 const PAGE_SIZE = 15;
 
@@ -13,22 +14,12 @@ export default function AdminStudentsPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
 
-  // Event filter
-  const [events, setEvents] = useState([]);
-  const [selectedEventId, setSelectedEventId] = useState(null);
+  // Event filter — shared via context
+  const { events, selectedEventId, setSelectedEventId } = useEvent();
 
   const [page, setPage] = useState(0);
   const [totalCount, setTotalCount] = useState(0);
   const pageCount = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
-
-  // Fetch events for picker
-  useEffect(() => {
-    supabase
-      .from('events')
-      .select('id, name, date')
-      .order('date', { ascending: false })
-      .then(({ data }) => setEvents(data || []));
-  }, []);
 
   // Debounce search so we don't hit Supabase on every keystroke
   useEffect(() => {

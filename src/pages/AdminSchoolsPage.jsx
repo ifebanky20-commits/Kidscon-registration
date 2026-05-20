@@ -7,6 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '.
 import { Button } from '../components/ui/Button';
 import Pagination from '../components/ui/Pagination';
 import { School, Trash2, ChevronRight, Download, GitMerge, X, CheckCircle2, AlertTriangle, MapPin, User, Phone, Users, ChevronDown, ChevronUp, Search, CalendarDays } from 'lucide-react';
+import { useEvent } from '../context/EventContext';
 
 const PAGE_SIZE = 10;
 
@@ -471,22 +472,15 @@ export default function AdminSchoolsPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
 
-  // Event filter
-  const [events, setEvents] = useState([]);
-  const [selectedEventId, setSelectedEventId] = useState(null);
+  // Event filter — shared via context
+  const { events, selectedEventId, setSelectedEventId } = useEvent();
+
+  // Category filter
+  const [selectedCategory, setSelectedCategory] = useState('All');
 
   const [page, setPage] = useState(0);
   const [totalCount, setTotalCount] = useState(0);
   const pageCount = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
-
-  // Fetch events for the filter picker
-  useEffect(() => {
-    supabase
-      .from('events')
-      .select('id, name, date')
-      .order('date', { ascending: false })
-      .then(({ data }) => setEvents(data || []));
-  }, []);
 
   // Debounce search — reset to page 0 on new query
   useEffect(() => {
@@ -497,7 +491,7 @@ export default function AdminSchoolsPage() {
     return () => clearTimeout(t);
   }, [searchTerm]);
 
-  const fetchRegisteredSchools = useCallback(async (p, search, eventId) => {
+  const fetchRegisteredSchools = useCallback(async (p, search, eventId, category) => {
     setLoading(true);
     const from = p * PAGE_SIZE;
     const to = from + PAGE_SIZE - 1;
@@ -512,6 +506,7 @@ export default function AdminSchoolsPage() {
 
     if (search) query = query.ilike('name', `%${search}%`);
     if (eventId) query = query.eq('event_id', eventId);
+    if (category && category !== 'All') query = query.ilike('category', `%${category}%`);
 
     const { data, count, error } = await query;
     if (!error) {
@@ -522,22 +517,22 @@ export default function AdminSchoolsPage() {
   }, []);
 
   useEffect(() => {
-    fetchRegisteredSchools(0, '', selectedEventId);
+    fetchRegisteredSchools(0, '', selectedEventId, selectedCategory);
 
     // Real-time subscription
     const channel = supabase
       .channel('registered-schools-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'schools' },  () => fetchRegisteredSchools(page, debouncedSearch, selectedEventId))
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'students' }, () => fetchRegisteredSchools(page, debouncedSearch, selectedEventId))
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'teachers' }, () => fetchRegisteredSchools(page, debouncedSearch, selectedEventId))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'schools' },  () => fetchRegisteredSchools(page, debouncedSearch, selectedEventId, selectedCategory))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'students' }, () => fetchRegisteredSchools(page, debouncedSearch, selectedEventId, selectedCategory))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'teachers' }, () => fetchRegisteredSchools(page, debouncedSearch, selectedEventId, selectedCategory))
       .subscribe();
 
     return () => supabase.removeChannel(channel);
-  }, [selectedEventId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [selectedEventId, selectedCategory]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    fetchRegisteredSchools(page, debouncedSearch, selectedEventId);
-  }, [page, debouncedSearch, selectedEventId, fetchRegisteredSchools]);
+    fetchRegisteredSchools(page, debouncedSearch, selectedEventId, selectedCategory);
+  }, [page, debouncedSearch, selectedEventId, selectedCategory, fetchRegisteredSchools]);
 
   const handleDeleteSchool = async (e, school) => {
     e.stopPropagation();
@@ -558,13 +553,14 @@ export default function AdminSchoolsPage() {
   };
 
   const handleExportSchools = async () => {
-    // Export ALL schools for selected event (not just current page)
+    // Export ALL schools for selected event + category (not just current page)
     try {
       let query = supabase
         .from('schools')
         .select('id, name, category, address, contact_person, phone, created_at, students(count), teachers(count)')
         .order('created_at', { ascending: false });
       if (selectedEventId) query = query.eq('event_id', selectedEventId);
+      if (selectedCategory && selectedCategory !== 'All') query = query.ilike('category', `%${selectedCategory}%`);
       const { data: allSchools } = await query;
       const headers = ['School Name', 'Category', 'Contact Person', 'Phone', 'Address', 'Total Students', 'Total Teachers', 'Registered On'];
       const rows = (allSchools || []).map((s) => [
@@ -612,6 +608,24 @@ export default function AdminSchoolsPage() {
               </div>
             </div>
           )}
+
+          {/* Category filter */}
+          <div className="flex items-center gap-1 bg-md-surface-container-low border border-md-outline/10 p-1 rounded-full shadow-sm">
+            {['All', 'Primary', 'Secondary'].map((cat) => (
+              <button
+                key={cat}
+                onClick={() => { setSelectedCategory(cat); setPage(0); }}
+                className={`px-4 py-1.5 rounded-full text-sm font-bold tracking-wide transition-colors ${
+                  selectedCategory === cat
+                    ? 'bg-md-primary text-md-on-primary shadow-sm'
+                    : 'text-md-on-surface-variant hover:bg-md-surface-container'
+                }`}
+              >
+                {cat === 'All' ? 'Both' : cat}
+              </button>
+            ))}
+          </div>
+
           <Button
             onClick={() => setMergeOpen(true)}
             variant="outline"
@@ -633,7 +647,7 @@ export default function AdminSchoolsPage() {
       {/* Page info */}
       <div className="flex items-center justify-between">
         <p className="text-sm text-md-on-surface-variant font-medium">
-          {loading ? 'Loading…' : `Showing ${schools.length} of ${totalCount} school${totalCount !== 1 ? 's' : ''}${debouncedSearch ? ` matching "${debouncedSearch}"` : ''}`}
+          {loading ? 'Loading…' : `Showing ${schools.length} of ${totalCount} school${totalCount !== 1 ? 's' : ''}${selectedCategory !== 'All' ? ` · ${selectedCategory}` : ''}${debouncedSearch ? ` matching "${debouncedSearch}"` : ''}`}
         </p>
         <span className="text-sm text-md-on-surface-variant font-medium">
           Page {page + 1} of {pageCount}

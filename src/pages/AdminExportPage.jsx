@@ -16,6 +16,7 @@ import {
   CalendarDays,
   ChevronDown,
 } from 'lucide-react';
+import { useEvent } from '../context/EventContext';
 
 // ─── CSV helper ────────────────────────────────────────────────────────────────
 function escapeCsvCell(value) {
@@ -146,18 +147,8 @@ export default function AdminExportPage() {
   const [exportFormat, setExportFormat] = useState('xlsx'); // 'csv' | 'xlsx' | 'docx'
   const [error, setError] = useState('');
 
-  // Event filter
-  const [events, setEvents] = useState([]);
-  const [selectedEventId, setSelectedEventId] = useState(null);
-
-  // Fetch events for picker
-  useEffect(() => {
-    supabase
-      .from('events')
-      .select('id, name, date')
-      .order('date', { ascending: false })
-      .then(({ data }) => setEvents(data || []));
-  }, []);
+  // Event filter — shared via context
+  const { events, selectedEventId, setSelectedEventId } = useEvent();
 
   useEffect(() => {
     fetchData(selectedEventId);

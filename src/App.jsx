@@ -14,6 +14,7 @@ import AdminAnalysisPage from './pages/AdminAnalysisPage';
 import PrintLayoutPage from './pages/PrintLayoutPage';
 import AdminLoginPage from './pages/AdminLoginPage';
 import ProtectedRoute from './components/layout/ProtectedRoute';
+import { EventProvider } from './context/EventContext';
 
 function App() {
   return (
@@ -31,7 +32,9 @@ function App() {
       {/* Protected Admin Pages */}
       <Route path="/admin" element={
         <ProtectedRoute>
-          <AdminLayout />
+          <EventProvider>
+            <AdminLayout />
+          </EventProvider>
         </ProtectedRoute>
       }>
         <Route index element={<AdminDashboard />} />
