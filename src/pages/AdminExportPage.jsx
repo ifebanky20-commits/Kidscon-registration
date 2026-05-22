@@ -15,6 +15,7 @@ import {
   Loader2,
   CalendarDays,
   ChevronDown,
+  ClipboardList,
 } from 'lucide-react';
 import { useEvent } from '../context/EventContext';
 
@@ -290,6 +291,22 @@ export default function AdminExportPage() {
     }
   };
 
+  const handleExportAttendance = async () => {
+    setExporting('attendance');
+    setError('');
+    try {
+      const headers = ['S/N', 'Student Name', 'Gender', 'Class / Grade', 'School', 'Category', 'Attendance'];
+      const rows = allStudents.map((s, i) => [i + 1, s.name, s.gender, s.class, s.school_name, s.school_category || '', '']);
+      downloadCsv('kidscon.csv', buildCsv(headers, rows));
+      setExported('attendance');
+      setTimeout(() => setExported(null), 3000);
+    } catch {
+      setError('Export failed. Please try again.');
+    } finally {
+      setExporting(null);
+    }
+  };
+
   // ── Render ─────────────────────────────────────────────────────────────────
 
   if (loading) {
@@ -395,6 +412,18 @@ export default function AdminExportPage() {
             onExport={handleExportSchoolsOverview}
             disabled={schools.length === 0}
             format={exportFormat}
+          />
+
+          <ExportCard
+            icon={<ClipboardList size={22} />}
+            title="Attendance Sheet"
+            description={`${allStudents.length} students — ready for attendance marking`}
+            color="tertiary"
+            loading={exporting === 'attendance'}
+            done={exported === 'attendance'}
+            onExport={handleExportAttendance}
+            disabled={allStudents.length === 0}
+            format="csv"
           />
         </div>
       </div>
