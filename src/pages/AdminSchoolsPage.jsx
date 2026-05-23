@@ -467,7 +467,7 @@ export default function AdminSchoolsPage() {
   const navigate = useNavigate();
   const [schools, setSchools] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [exportFormat, setExportFormat] = useState('xlsx');
+  const [exportMenuOpen, setExportMenuOpen] = useState(false);
   const [mergeOpen, setMergeOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -584,7 +584,7 @@ export default function AdminSchoolsPage() {
     }
   };
 
-  const handleExportSchools = async () => {
+  const handleExportSchools = async (format) => {
     // Export ALL schools for selected event + category (not just current page)
     try {
       let query = supabase
@@ -601,9 +601,9 @@ export default function AdminSchoolsPage() {
         new Date(s.created_at).toLocaleDateString(),
       ]);
       const date = new Date().toISOString().slice(0, 10);
-      if (exportFormat === 'csv') {
+      if (format === 'csv') {
         downloadCsv(`kidscon_registered_schools_${date}.csv`, buildCsv(headers, rows));
-      } else if (exportFormat === 'xlsx') {
+      } else if (format === 'xlsx') {
         downloadExcel(`kidscon_registered_schools_${date}.xlsx`, headers, rows);
       } else {
         await downloadWord(`kidscon_registered_schools_${date}.docx`, 'Registered Schools Report', headers, rows);
@@ -653,9 +653,9 @@ export default function AdminSchoolsPage() {
       </div>
 
       {/* ── FILTER & ACTION CARD ── */}
-      <div className="bg-md-surface-container-low border border-md-outline/5 rounded-[28px] p-4 sm:p-6 flex flex-col xl:flex-row justify-between items-stretch xl:items-center gap-4 shadow-sm">
+      <div className="bg-md-surface-container-low border border-md-outline/5 rounded-[28px] p-4 sm:p-6 flex flex-col lg:flex-row justify-between items-stretch lg:items-center gap-4 shadow-sm">
         {/* Search Input Box */}
-        <div className="relative w-full xl:max-w-md">
+        <div className="relative w-full lg:max-w-md">
           <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-md-on-surface-variant pointer-events-none" />
           <input
             type="text"
@@ -675,35 +675,66 @@ export default function AdminSchoolsPage() {
           )}
         </div>
 
-        {/* Filters and Exports */}
-        <div className="flex flex-wrap items-center gap-4">
-          {/* Category filter */}
-          <div className="flex items-center gap-1 bg-md-surface-container border border-md-outline/10 p-1 rounded-full">
-            {['All', 'Primary', 'Secondary'].map((cat) => (
-              <button
-                key={cat}
-                onClick={() => { setSelectedCategory(cat); setPage(0); }}
-                className={`px-4 py-1.5 rounded-full text-xs sm:text-sm font-bold tracking-wide transition-colors ${
-                  selectedCategory === cat
-                    ? 'bg-md-primary text-md-on-primary shadow-sm'
-                    : 'text-md-on-surface-variant hover:bg-md-surface-container-low'
-                }`}
-              >
-                {cat === 'All' ? 'Both' : cat}
-              </button>
-            ))}
+        {/* Filters and Exports Dropdowns */}
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Category Dropdown Selector */}
+          <div className="flex items-center gap-2 bg-md-surface-container border border-md-outline/10 h-11 px-4 rounded-full shadow-sm relative shrink-0">
+            <School size={15} className="text-md-on-surface-variant/75 shrink-0" />
+            <select
+              value={selectedCategory}
+              onChange={(e) => { setSelectedCategory(e.target.value); setPage(0); }}
+              className="appearance-none pr-8 bg-transparent text-md-on-background text-sm font-bold focus:outline-none transition cursor-pointer border-none"
+            >
+              <option value="All">All Categories</option>
+              <option value="Primary">Primary Only</option>
+              <option value="Secondary">Secondary Only</option>
+            </select>
+            <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-md-on-surface-variant pointer-events-none" />
           </div>
 
-          {/* Export Toggles & Trigger */}
-          <div className="flex items-center gap-3 flex-wrap">
-            <div className="flex items-center gap-1 bg-md-surface-container border border-md-outline/10 p-1 rounded-full">
-              <button onClick={() => setExportFormat('csv')}  className={`px-3 sm:px-4 py-1.5 rounded-full text-xs sm:text-sm font-bold tracking-wide transition-colors ${exportFormat === 'csv'  ? 'bg-md-primary text-md-on-primary shadow-sm' : 'text-md-on-surface-variant hover:bg-md-surface-container-low'}`}>CSV</button>
-              <button onClick={() => setExportFormat('xlsx')} className={`px-3 sm:px-4 py-1.5 rounded-full text-xs sm:text-sm font-bold tracking-wide transition-colors ${exportFormat === 'xlsx' ? 'bg-md-primary text-md-on-primary shadow-sm' : 'text-md-on-surface-variant hover:bg-md-surface-container-low'}`}>Excel</button>
-              <button onClick={() => setExportFormat('docx')} className={`px-3 sm:px-4 py-1.5 rounded-full text-xs sm:text-sm font-bold tracking-wide transition-colors ${exportFormat === 'docx' ? 'bg-md-primary text-md-on-primary shadow-sm' : 'text-md-on-surface-variant hover:bg-md-surface-container-low'}`}>Word</button>
-            </div>
-            <Button onClick={handleExportSchools} variant="outline" className="gap-2 shadow-sm font-semibold h-11 rounded-full whitespace-nowrap" disabled={loading || totalCount === 0}>
-              <Download size={16} /> Export as {exportFormat.toUpperCase()}
+          {/* Export Action Menu Dropdown */}
+          <div className="relative shrink-0">
+            <Button
+              onClick={() => setExportMenuOpen(!exportMenuOpen)}
+              variant="outline"
+              className="gap-2 shadow-sm font-semibold h-11 rounded-full whitespace-nowrap border-md-outline/20 bg-md-surface-container-low"
+              disabled={loading || totalCount === 0}
+            >
+              <Download size={16} className="text-md-primary shrink-0" />
+              <span>Export Report</span>
+              <ChevronDown size={14} className="text-md-on-surface-variant/70 shrink-0" />
             </Button>
+            {exportMenuOpen && (
+              <>
+                <div className="fixed inset-0 z-20" onClick={() => setExportMenuOpen(false)} />
+                <div className="absolute right-0 mt-2 w-52 bg-md-surface rounded-[20px] shadow-2xl border border-md-outline/10 py-2.5 z-30 animate-in fade-in slide-in-from-top-2 duration-200">
+                  <div className="px-4 py-1 text-[11px] font-bold text-md-on-surface-variant/60 uppercase tracking-widest border-b border-md-outline/5 pb-2 mb-1">
+                    Select File Format
+                  </div>
+                  <button
+                    onClick={() => { handleExportSchools('xlsx'); setExportMenuOpen(false); }}
+                    className="w-full text-left px-4 py-2.5 text-sm font-semibold hover:bg-md-surface-container transition-colors text-md-on-background flex items-center gap-2"
+                  >
+                    <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                    Microsoft Excel (.xlsx)
+                  </button>
+                  <button
+                    onClick={() => { handleExportSchools('docx'); setExportMenuOpen(false); }}
+                    className="w-full text-left px-4 py-2.5 text-sm font-semibold hover:bg-md-surface-container transition-colors text-md-on-background flex items-center gap-2"
+                  >
+                    <span className="w-2 h-2 rounded-full bg-blue-500" />
+                    Microsoft Word (.docx)
+                  </button>
+                  <button
+                    onClick={() => { handleExportSchools('csv'); setExportMenuOpen(false); }}
+                    className="w-full text-left px-4 py-2.5 text-sm font-semibold hover:bg-md-surface-container transition-colors text-md-on-background flex items-center gap-2"
+                  >
+                    <span className="w-2 h-2 rounded-full bg-amber-500" />
+                    Standard CSV (.csv)
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       </div>
