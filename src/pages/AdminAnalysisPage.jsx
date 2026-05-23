@@ -18,6 +18,7 @@ const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', '
 export default function AdminAnalysisPage() {
   const { events, selectedEventId, setSelectedEventId } = useEvent();
   const [rawSchools, setRawSchools] = useState([]);
+  const [rawStudents, setRawStudents] = useState([]);
   const [loading, setLoading] = useState(true);
 
   // Filters
@@ -28,12 +29,13 @@ export default function AdminAnalysisPage() {
   useEffect(() => {
     async function init() {
       setLoading(true);
-      // Fetch all schools with student/teacher counts
-      const { data: schoolData } = await supabase
-        .from('schools')
-        .select('id, name, created_at, category, event_id, students(count), teachers(count)');
+      const [schoolsRes, studentsRes] = await Promise.all([
+        supabase.from('schools').select('id, name, created_at, category, event_id, students(count), teachers(count)'),
+        supabase.from('students').select('school_id, gender, created_at')
+      ]);
       
-      if (schoolData) setRawSchools(schoolData);
+      if (schoolsRes.data) setRawSchools(schoolsRes.data);
+      if (studentsRes.data) setRawStudents(studentsRes.data);
       setLoading(false);
     }
     init();
@@ -71,18 +73,26 @@ export default function AdminAnalysisPage() {
   // Compute Chart Data & Analytics
   const { 
     monthlyRegData, 
+    dailyRegData,
     monthlyStudentData,
     categoryData, 
     demographicsData,
+    genderData,
     insights 
   } = useMemo(() => {
     let totalSchools = 0;
     let totalStudents = 0;
     let totalTeachers = 0;
+    let maleCount = 0;
+    let femaleCount = 0;
     
     const monthsMap = {};
+    const daysMap = {};
     const studentsByMonthMap = {};
     const catsMap = {};
+
+    // Create a set of valid school IDs based on current filters
+    const validSchoolIds = new Set(filteredData.map(s => s.id));
 
     filteredData.forEach(school => {
       totalSchools++;
@@ -94,21 +104,42 @@ export default function AdminAnalysisPage() {
       const date = new Date(school.created_at);
       const mKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
       const mLabel = `${MONTHS[date.getMonth()]} ${date.getFullYear()}`;
+      
+      const dKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+      const dLabel = `${date.getDate()} ${MONTHS[date.getMonth()]}`;
 
       // Aggregate registrations per month
       if (!monthsMap[mKey]) monthsMap[mKey] = { name: mLabel, Schools: 0, sortKey: mKey };
       monthsMap[mKey].Schools += 1;
 
-      // Aggregate students per month
-      if (!studentsByMonthMap[mKey]) studentsByMonthMap[mKey] = { name: mLabel, Students: 0, sortKey: mKey };
-      studentsByMonthMap[mKey].Students += stCount;
+      // Aggregate registrations per day
+      if (!daysMap[dKey]) daysMap[dKey] = { name: dLabel, Schools: 0, sortKey: dKey };
+      daysMap[dKey].Schools += 1;
 
       // Aggregate categories
       const cat = school.category || 'Uncategorized';
       catsMap[cat] = (catsMap[cat] || 0) + 1;
     });
 
+    // Process students belonging to the filtered schools
+    rawStudents.forEach(student => {
+      if (!validSchoolIds.has(student.school_id)) return;
+      
+      // Gender aggregation
+      if (student.gender === 'Male') maleCount++;
+      else if (student.gender === 'Female') femaleCount++;
+
+      // Monthly student volume aggregation
+      const date = new Date(student.created_at);
+      const mKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      const mLabel = `${MONTHS[date.getMonth()]} ${date.getFullYear()}`;
+      
+      if (!studentsByMonthMap[mKey]) studentsByMonthMap[mKey] = { name: mLabel, Students: 0, sortKey: mKey };
+      studentsByMonthMap[mKey].Students += 1;
+    });
+
     const monthlyRegArr = Object.values(monthsMap).sort((a, b) => a.sortKey.localeCompare(b.sortKey));
+    const dailyRegArr = Object.values(daysMap).sort((a, b) => a.sortKey.localeCompare(b.sortKey));
     const monthlyStudentArr = Object.values(studentsByMonthMap).sort((a, b) => a.sortKey.localeCompare(b.sortKey));
     
     const categoryArr = Object.keys(catsMap)
@@ -142,16 +173,21 @@ export default function AdminAnalysisPage() {
 
     return {
       monthlyRegData: monthlyRegArr,
+      dailyRegData: dailyRegArr,
       monthlyStudentData: monthlyStudentArr,
       categoryData: categoryArr,
       demographicsData: [
         { name: 'Students', value: totalStudents },
         { name: 'Teachers', value: totalTeachers }
       ],
+      genderData: [
+        { name: 'Male', value: maleCount },
+        { name: 'Female', value: femaleCount }
+      ].filter(d => d.value > 0),
       insights: insightText
     };
 
-  }, [filteredData, selectedEventId, selectedYear, events]);
+  }, [filteredData, rawStudents, selectedEventId, selectedYear, events]);
 
   if (loading) {
     return (
@@ -318,27 +354,57 @@ export default function AdminAnalysisPage() {
           <Card className="rounded-[32px] border border-md-outline/10 bg-md-surface-container-lowest shadow-sm">
             <CardContent className="p-6 md:p-8">
               <h3 className="text-sm font-bold text-md-on-surface-variant uppercase tracking-wider mb-6 flex items-center gap-2">
-                <PieChartIcon size={16} /> Attendee Ratio
+                <PieChartIcon size={16} /> Gender Ratio
               </h3>
               <div className="h-[250px] w-full">
-                {demographicsData.reduce((a, b) => a + b.value, 0) > 0 ? (
+                {genderData.reduce((a, b) => a + b.value, 0) > 0 ? (
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
-                      <Pie data={demographicsData} cx="50%" cy="50%" outerRadius={90} dataKey="value" stroke="none">
-                        {demographicsData.map((entry, index) => <Cell key={`cell-${index}`} fill={['#6750A4', '#7D5260'][index % 2]} />)}
+                      <Pie data={genderData} cx="50%" cy="50%" innerRadius={50} outerRadius={90} dataKey="value" stroke="none">
+                        {genderData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.name === 'Male' ? '#4A4458' : '#B3261E'} />)}
                       </Pie>
                       <RechartsTooltip contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 8px 24px rgba(0,0,0,0.1)' }} />
                       <Legend iconType="circle" wrapperStyle={{ fontSize: '13px', fontWeight: '500' }} />
                     </PieChart>
                   </ResponsiveContainer>
                 ) : (
-                  <div className="flex items-center justify-center h-full text-md-on-surface-variant/50 font-medium">No attendee data</div>
+                  <div className="flex items-center justify-center h-full text-md-on-surface-variant/50 font-medium">No gender data</div>
                 )}
               </div>
             </CardContent>
           </Card>
 
         </div>
+
+        {/* Daily Registration Timeline Full Width */}
+        <Card className="rounded-[32px] border border-md-outline/10 bg-md-surface-container-lowest shadow-sm lg:col-span-2">
+          <CardContent className="p-6 md:p-8">
+            <h3 className="text-sm font-bold text-md-on-surface-variant uppercase tracking-wider mb-6 flex items-center gap-2">
+              <Activity size={16} /> Daily Registration Trend
+            </h3>
+            <div className="h-[300px] w-full">
+              {dailyRegData.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={dailyRegData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="colorDaily" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#B3261E" stopOpacity={0.3}/>
+                        <stop offset="95%" stopColor="#B3261E" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e0e0e0" />
+                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6b7280' }} dy={10} />
+                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6b7280' }} allowDecimals={false} />
+                    <RechartsTooltip contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 8px 24px rgba(0,0,0,0.1)' }} cursor={{ stroke: '#B3261E', strokeWidth: 1, strokeDasharray: '5 5' }} />
+                    <Area type="monotone" dataKey="Schools" stroke="#B3261E" strokeWidth={3} fillOpacity={1} fill="url(#colorDaily)" activeDot={{ r: 6, fill: '#B3261E', stroke: '#fff', strokeWidth: 2 }} />
+                  </AreaChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex items-center justify-center h-full text-md-on-surface-variant/50 font-medium">No data matching filters</div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
 
       </div>
     </div>

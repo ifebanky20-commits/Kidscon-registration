@@ -279,7 +279,13 @@ export default function RegistrationPage() {
       localStorage.removeItem('kidscon_reg_teachers');
 
       toast.success("Registration submitted successfully!");
-      navigate('/confirmation', { state: { totalStudents: data.students.length, schoolName: data.schoolInfo.name } });
+      navigate('/confirmation', { 
+        state: { 
+          totalStudents: data.students.length, 
+          schoolName: data.schoolInfo.name,
+          registrationId: schoolId 
+        } 
+      });
     } catch (err) {
       toast.error('Failed to register. Please check your connection and try again.');
       console.error('Registration error:', err);

@@ -1,10 +1,14 @@
 import { useLocation, Link } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
-import { CheckCircle2, Download, Edit } from 'lucide-react';
+import { CheckCircle2, Download, Edit, Loader2 } from 'lucide-react';
+import { PDFDownloadLink } from '@react-pdf/renderer';
+import RegistrationTicketPDF from '../components/pdf/RegistrationTicketPDF';
 
 export default function ConfirmationPage() {
   const location = useLocation();
   const totalStudents = location.state?.totalStudents || 0;
+  const schoolName = location.state?.schoolName || 'Unknown School';
+  const registrationId = location.state?.registrationId || 'PENDING';
 
   return (
     <div className="flex flex-col items-center justify-center min-h-[60vh] px-4 relative z-10">
@@ -28,9 +32,27 @@ export default function ConfirmationPage() {
         </div>
 
         <div className="flex flex-col gap-4 mt-8 pt-4">
-          <Button variant="primary" size="lg" className="w-full gap-2 text-base md-elevation-1" onClick={() => window.print()}>
-            <Download size={20} /> Download PDF
-          </Button>
+          <PDFDownloadLink
+            document={
+              <RegistrationTicketPDF 
+                schoolName={schoolName} 
+                totalStudents={totalStudents} 
+                registrationId={registrationId} 
+              />
+            }
+            fileName={`KIDSCON_Ticket_${schoolName.replace(/\s+/g, '_')}.pdf`}
+            className="w-full"
+          >
+            {({ loading }) => (
+              <Button variant="primary" size="lg" className="w-full gap-2 text-base md-elevation-1" disabled={loading}>
+                {loading ? (
+                  <><Loader2 size={20} className="animate-spin" /> Generating PDF...</>
+                ) : (
+                  <><Download size={20} /> Download PDF Ticket</>
+                )}
+              </Button>
+            )}
+          </PDFDownloadLink>
           
           <Link to="/register" className="w-full">
             <Button variant="ghost" size="lg" className="w-full gap-2 text-md-on-surface-variant">
