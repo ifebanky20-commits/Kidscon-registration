@@ -1,25 +1,30 @@
+import { lazy, Suspense } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import MainLayout from './layouts/MainLayout';
 import AdminLayout from './layouts/AdminLayout';
-import LandingPage from './pages/LandingPage';
-import RegistrationPage from './pages/RegistrationPage';
-import ConfirmationPage from './pages/ConfirmationPage';
-import AdminDashboard from './pages/AdminDashboard';
-import SchoolDetailPage from './pages/SchoolDetailPage';
-import AdminSchoolsPage from './pages/AdminSchoolsPage';
-import AdminStudentsPage from './pages/AdminStudentsPage';
-import AdminExportPage from './pages/AdminExportPage';
-import AdminEventsPage from './pages/AdminEventsPage';
-import AdminAnalysisPage from './pages/AdminAnalysisPage';
-import AdminVerifiedSchoolsPage from './pages/AdminVerifiedSchoolsPage';
-import PrintLayoutPage from './pages/PrintLayoutPage';
-import AdminLoginPage from './pages/AdminLoginPage';
 import ProtectedRoute from './components/layout/ProtectedRoute';
 import { EventProvider } from './context/EventContext';
+import PageLoader from './components/ui/PageLoader';
+
+// Lazy load all pages for optimal code splitting
+const LandingPage = lazy(() => import('./pages/LandingPage'));
+const RegistrationPage = lazy(() => import('./pages/RegistrationPage'));
+const ConfirmationPage = lazy(() => import('./pages/ConfirmationPage'));
+const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
+const SchoolDetailPage = lazy(() => import('./pages/SchoolDetailPage'));
+const AdminSchoolsPage = lazy(() => import('./pages/AdminSchoolsPage'));
+const AdminStudentsPage = lazy(() => import('./pages/AdminStudentsPage'));
+const AdminExportPage = lazy(() => import('./pages/AdminExportPage'));
+const AdminEventsPage = lazy(() => import('./pages/AdminEventsPage'));
+const AdminAnalysisPage = lazy(() => import('./pages/AdminAnalysisPage'));
+const AdminVerifiedSchoolsPage = lazy(() => import('./pages/AdminVerifiedSchoolsPage'));
+const PrintLayoutPage = lazy(() => import('./pages/PrintLayoutPage'));
+const AdminLoginPage = lazy(() => import('./pages/AdminLoginPage'));
 
 function App() {
   return (
-    <Routes>
+    <Suspense fallback={<PageLoader />}>
+      <Routes>
       {/* Public Pages */}
       <Route element={<MainLayout />}>
         <Route path="/" element={<LandingPage />} />
@@ -50,7 +55,8 @@ function App() {
 
       {/* Standalone Prints */}
       <Route path="/print/:id" element={<PrintLayoutPage />} />
-    </Routes>
+      </Routes>
+    </Suspense>
   );
 }
 

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Outlet, NavLink, Link, useNavigate } from 'react-router-dom';
 import { LayoutDashboard, School, Users, Download, LogOut, Menu, X, CalendarDays, BarChart3, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import ThemeToggle from '../components/ThemeToggle';
 import logo from '../assets/logo.jpeg';
 
 export default function AdminLayout() {
@@ -47,7 +48,11 @@ export default function AdminLayout() {
         ))}
       </div>
 
-      <div className="p-4 border-t border-md-outline/5">
+      <div className="p-4 border-t border-md-outline/5 flex flex-col gap-2">
+        <div className="flex items-center justify-between px-4 py-2">
+          <span className="text-sm font-medium text-md-on-surface-variant">Theme</span>
+          <ThemeToggle />
+        </div>
         <button 
           onClick={handleLogout}
           className="flex items-center gap-4 px-4 py-3.5 rounded-full text-md-on-surface-variant hover:bg-md-on-surface-variant/10 active:bg-md-on-surface-variant/20 transition-all font-medium w-full text-left cursor-pointer"
@@ -70,7 +75,7 @@ export default function AdminLayout() {
 
         <div className="h-24 flex items-center px-8 border-b border-md-outline/5 relative">
           <Link to="/" className="flex items-center gap-3 active:scale-95 transition-transform">
-            <img src={logo} alt="KIDSCON Logo" className="h-12 w-auto" style={{mixBlendMode: 'multiply'}} />
+            <img src={logo} alt="KIDSCON Logo" className="h-12 w-auto mix-blend-multiply dark:mix-blend-normal dark:invert dark:opacity-90" />
             <span className="font-bold tracking-tight text-lg">KIDSCON Admin</span>
           </Link>
         </div>
@@ -91,7 +96,7 @@ export default function AdminLayout() {
         
         <div className="h-20 flex items-center justify-between px-6 border-b border-md-outline/5">
           <Link to="/" className="flex items-center gap-3" onClick={() => setMobileOpen(false)}>
-            <img src={logo} alt="KIDSCON Logo" className="h-10 w-auto" style={{mixBlendMode: 'multiply'}} />
+            <img src={logo} alt="KIDSCON Logo" className="h-10 w-auto mix-blend-multiply dark:mix-blend-normal dark:invert dark:opacity-90" />
             <span className="font-bold tracking-tight">KIDSCON Admin</span>
           </Link>
           <button 
@@ -115,16 +120,19 @@ export default function AdminLayout() {
         {/* Mobile Header with Hamburger */}
         <header className="md:hidden h-16 border-b border-md-outline/10 flex items-center justify-between px-4 bg-md-surface-container/80 backdrop-blur-md sticky top-0 z-10">
           <Link to="/" className="flex items-center gap-2">
-            <img src={logo} alt="KIDSCON Logo" className="h-9 w-auto" style={{mixBlendMode: 'multiply'}} />
+            <img src={logo} alt="KIDSCON Logo" className="h-9 w-auto mix-blend-multiply dark:mix-blend-normal dark:invert dark:opacity-90" />
             <span className="font-bold">Admin Portal</span>
           </Link>
-          <button
-            onClick={() => setMobileOpen(true)}
-            className="p-2 rounded-full hover:bg-md-on-surface-variant/10 active:bg-md-on-surface-variant/20 transition-colors"
-            aria-label="Open navigation menu"
-          >
-            <Menu size={24} />
-          </button>
+          <div className="flex items-center gap-1">
+            <ThemeToggle />
+            <button
+              onClick={() => setMobileOpen(true)}
+              className="p-2 rounded-full hover:bg-md-on-surface-variant/10 active:bg-md-on-surface-variant/20 transition-colors"
+              aria-label="Open navigation menu"
+            >
+              <Menu size={24} />
+            </button>
+          </div>
         </header>
 
         <div className="flex-1 p-4 md:p-8 lg:p-10 overflow-y-auto w-full max-w-7xl mx-auto custom-scrollbar">
