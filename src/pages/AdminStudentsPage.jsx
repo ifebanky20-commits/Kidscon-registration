@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/Table';
 import { Button } from '../components/ui/Button';
 import Pagination from '../components/ui/Pagination';
+import { Skeleton } from '../components/ui/Skeleton';
 import { Users, Search, CalendarDays, ChevronDown } from 'lucide-react';
 import { useEvent } from '../context/EventContext';
 
@@ -120,32 +121,35 @@ export default function AdminStudentsPage() {
         </span>
       </div>
 
-      {loading ? (
-        <div className="flex items-center justify-center py-20">
-          <div className="w-12 h-12 rounded-full border-4 border-md-tertiary/20 border-t-md-tertiary animate-spin" />
-        </div>
-      ) : (
-        <>
-          {/* Responsive wrapper */}
-          <div className="rounded-[28px] overflow-x-auto md-elevation-1 border border-md-outline/5 bg-md-surface-container-low">
-            <Table className="min-w-[640px]">
-              <TableHeader className="bg-md-surface-container">
-                <TableRow className="border-md-outline/10">
-                  <TableHead className="py-5 font-semibold">Student Name</TableHead>
-                  <TableHead className="py-5 font-semibold">School</TableHead>
-                  <TableHead className="py-5 font-semibold text-center">Gender</TableHead>
-                  <TableHead className="py-5 font-semibold">Class / Grade</TableHead>
-                  <TableHead className="py-5 font-semibold text-right">Registered</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {students.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={5} className="text-center py-10 text-md-on-surface-variant font-medium">
-                      {searchTerm ? 'No students found matching your search.' : 'No students have been registered yet.'}
-                    </TableCell>
+        <div className="rounded-[28px] overflow-x-auto md-elevation-1 border border-md-outline/5 bg-md-surface-container-low">
+          <Table className="min-w-[640px]">
+            <TableHeader className="bg-md-surface-container">
+              <TableRow className="border-md-outline/10">
+                <TableHead className="py-5 font-semibold">Student Name</TableHead>
+                <TableHead className="py-5 font-semibold">School</TableHead>
+                <TableHead className="py-5 font-semibold text-center">Gender</TableHead>
+                <TableHead className="py-5 font-semibold">Class / Grade</TableHead>
+                <TableHead className="py-5 font-semibold text-right">Registered</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {loading ? (
+                Array.from({ length: 5 }).map((_, i) => (
+                  <TableRow key={`skeleton-${i}`}>
+                    <TableCell className="py-5"><Skeleton className="h-6 w-48" /></TableCell>
+                    <TableCell className="py-5"><Skeleton className="h-6 w-56" /></TableCell>
+                    <TableCell className="py-5"><Skeleton className="h-6 w-16 mx-auto rounded-full" /></TableCell>
+                    <TableCell className="py-5"><Skeleton className="h-6 w-24" /></TableCell>
+                    <TableCell className="py-5 flex justify-end"><Skeleton className="h-6 w-24" /></TableCell>
                   </TableRow>
-                ) : (
+                ))
+              ) : students.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={5} className="text-center py-10 text-md-on-surface-variant font-medium">
+                    {searchTerm ? 'No students found matching your search.' : 'No students have been registered yet.'}
+                  </TableCell>
+                </TableRow>
+              ) : (
                   students.map((student) => (
                     <TableRow key={student.id} className="hover:bg-md-surface-container transition-colors border-md-outline/5">
                       <TableCell className="font-bold text-md-on-background py-5">{student.name}</TableCell>
@@ -165,17 +169,14 @@ export default function AdminStudentsPage() {
                       </TableCell>
                     </TableRow>
                   ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
+              )}
+            </TableBody>
+          </Table>
+        </div>
 
-          {/* Pagination */}
+        {!loading && students.length > 0 && (
           <Pagination page={page} pageCount={pageCount} onPageChange={setPage} />
-
-        </>
-      )}
-
-    </div>
+        )}
+      </div>
   );
 }

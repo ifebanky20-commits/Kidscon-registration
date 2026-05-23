@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
+import { toast } from 'sonner';
 
 import { Button } from '../components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '../components/ui/Card';
@@ -115,7 +116,6 @@ export default function RegistrationPage() {
   const [newTeacherName, setNewTeacherName] = useState('');
   
   const [submitLoading, setSubmitLoading] = useState(false);
-  const [submitError, setSubmitError] = useState('');
 
   // Excel upload
   const fileInputRef = useRef(null);
@@ -237,7 +237,6 @@ export default function RegistrationPage() {
 
   const onSubmit = async (data) => {
     setSubmitLoading(true);
-    setSubmitError('');
     try {
       const schoolId = crypto.randomUUID();
 
@@ -279,9 +278,10 @@ export default function RegistrationPage() {
       localStorage.removeItem('kidscon_reg_students');
       localStorage.removeItem('kidscon_reg_teachers');
 
+      toast.success("Registration submitted successfully!");
       navigate('/confirmation', { state: { totalStudents: data.students.length, schoolName: data.schoolInfo.name } });
     } catch (err) {
-      setSubmitError('Failed to register. Please check your connection and try again.');
+      toast.error('Failed to register. Please check your connection and try again.');
       console.error('Registration error:', err);
     } finally {
       setSubmitLoading(false);
@@ -634,13 +634,6 @@ export default function RegistrationPage() {
           )}
           </AnimatePresence>
         </CardContent>
-
-        {submitError && step === 4 && (
-          <div className="mx-6 mb-4 flex items-center justify-center gap-2 bg-md-error/10 text-md-error p-4 rounded-xl text-sm font-semibold">
-            <AlertCircle size={20} />
-            {submitError}
-          </div>
-        )}
         
         <CardFooter className="justify-between bg-md-surface-container-low/50 border-t border-md-outline/10 p-6 rounded-b-[32px]">
           <Button 

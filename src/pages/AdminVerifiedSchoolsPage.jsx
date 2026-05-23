@@ -4,6 +4,8 @@ import { supabase } from '../lib/supabase';
 import { ShieldCheck, ShieldOff, Search, X, Plus, Trash2, AlertTriangle, School } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/Table';
+import { Skeleton } from '../components/ui/Skeleton';
+import { toast } from 'sonner';
 
 export default function AdminVerifiedSchoolsPage() {
   const queryClient = useQueryClient();
@@ -13,7 +15,6 @@ export default function AdminVerifiedSchoolsPage() {
   // Add new school state
   const [addName, setAddName] = useState('');
   const [adding, setAdding] = useState(false);
-  const [addError, setAddError] = useState('');
   const addInputRef = useRef(null);
 
   // Per-row removing state
@@ -52,22 +53,22 @@ export default function AdminVerifiedSchoolsPage() {
   const handleAdd = async () => {
     const name = addName.trim();
     if (!name) return;
-    setAddError('');
 
     // Check for duplicate
     const duplicate = verifiedSchools.find(
       (s) => s.name.trim().toLowerCase() === name.toLowerCase()
     );
     if (duplicate) {
-      setAddError(`"${name}" is already on the verified list.`);
+      toast.error(`"${name}" is already on the verified list.`);
       return;
     }
 
     setAdding(true);
     const { error } = await supabase.from('available_schools').insert({ name });
     if (error) {
-      setAddError('Failed to add school. Please try again.');
+      toast.error('Failed to add school. Please try again.');
     } else {
+      toast.success(`"${name}" added to verified list!`);
       setAddName('');
       queryClient.invalidateQueries({ queryKey: ['verifiedSchools'] });
     }
@@ -78,6 +79,7 @@ export default function AdminVerifiedSchoolsPage() {
     if (!window.confirm(`Remove "${school.name}" from the verified list?`)) return;
     setRemovingId(school.id);
     await supabase.from('available_schools').delete().eq('id', school.id);
+    toast.success(`"${school.name}" removed from verified list.`);
     queryClient.invalidateQueries({ queryKey: ['verifiedSchools'] });
     setRemovingId(null);
   };
@@ -124,7 +126,7 @@ export default function AdminVerifiedSchoolsPage() {
               ref={addInputRef}
               type="text"
               value={addName}
-              onChange={(e) => { setAddName(e.target.value); setAddError(''); }}
+              onChange={(e) => setAddName(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
               placeholder="Enter school name exactly as it appears…"
               className="w-full h-12 pl-11 pr-4 bg-md-surface-container rounded-full border border-md-outline/20 focus:outline-none focus:ring-2 focus:ring-emerald-400/50 focus:border-emerald-400 text-md-on-background placeholder:text-md-on-surface-variant/50 transition-all font-medium"
@@ -143,12 +145,6 @@ export default function AdminVerifiedSchoolsPage() {
           </Button>
         </div>
 
-        {addError && (
-          <div className="flex items-center gap-2 text-sm font-semibold text-amber-700 bg-amber-50 border border-amber-200 px-4 py-3 rounded-xl">
-            <AlertTriangle size={16} className="shrink-0" />
-            {addError}
-          </div>
-        )}
       </div>
 
       {/* Search */}
@@ -182,11 +178,6 @@ export default function AdminVerifiedSchoolsPage() {
       </p>
 
       {/* Table */}
-      {loading ? (
-        <div className="flex items-center justify-center py-20">
-          <div className="w-10 h-10 border-4 border-md-outline/20 border-t-emerald-500 rounded-full animate-spin" />
-        </div>
-      ) : (
         <div className="rounded-[28px] overflow-hidden md-elevation-1 border border-md-outline/5 bg-md-surface-container-low">
           <Table className="min-w-max whitespace-nowrap">
             <TableHeader className="bg-md-surface-container">
@@ -200,7 +191,16 @@ export default function AdminVerifiedSchoolsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filtered.length === 0 ? (
+              {loading ? (
+                Array.from({ length: 4 }).map((_, i) => (
+                  <TableRow key={`skeleton-${i}`}>
+                    <TableCell className="py-5"><Skeleton className="h-6 w-6 mx-auto rounded-full" /></TableCell>
+                    <TableCell className="py-5"><Skeleton className="h-6 w-48" /></TableCell>
+                    <TableCell className="py-5"><Skeleton className="h-6 w-24" /></TableCell>
+                    <TableCell className="py-5 flex justify-end"><Skeleton className="h-6 w-20" /></TableCell>
+                  </TableRow>
+                ))
+              ) : filtered.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={4} className="text-center py-16 text-md-on-surface-variant font-medium">
                     <div className="flex flex-col items-center gap-3">
@@ -258,7 +258,6 @@ export default function AdminVerifiedSchoolsPage() {
             </TableBody>
           </Table>
         </div>
-      )}
     </div>
   );
 }

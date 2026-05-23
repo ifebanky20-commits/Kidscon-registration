@@ -7,6 +7,8 @@ import { supabase } from '../lib/supabase';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/Table';
 import { Button } from '../components/ui/Button';
 import Pagination from '../components/ui/Pagination';
+import { Skeleton } from '../components/ui/Skeleton';
+import { toast } from 'sonner';
 import { School, Trash2, ChevronRight, Download, GitMerge, X, CheckCircle2, AlertTriangle, MapPin, User, Phone, Users, ChevronDown, ChevronUp, Search, CalendarDays, ShieldCheck, ShieldOff } from 'lucide-react';
 import { useEvent } from '../context/EventContext';
 
@@ -578,9 +580,10 @@ export default function AdminSchoolsPage() {
       const newPageCount = Math.max(1, Math.ceil(newTotal / PAGE_SIZE));
       const safePage = Math.min(page, newPageCount - 1);
       setPage(safePage);
+      toast.success(`"${school.name}" deleted successfully.`);
     } catch (err) {
       console.error('Delete failed:', err);
-      alert(`Failed to delete: ${err.message || JSON.stringify(err)}`);
+      toast.error(`Failed to delete: ${err.message || JSON.stringify(err)}`);
     }
   };
 
@@ -608,9 +611,10 @@ export default function AdminSchoolsPage() {
       } else {
         await downloadWord(`kidscon_registered_schools_${date}.docx`, 'Registered Schools Report', headers, rows);
       }
+      toast.success('Export completed successfully!');
     } catch (err) {
       console.error('Export failed:', err);
-      alert('Failed to export. Please try again.');
+      toast.error('Failed to export. Please try again.');
     }
   };
 
@@ -751,34 +755,41 @@ export default function AdminSchoolsPage() {
 
       <div className="grid grid-cols-1 gap-8">
         <div>
-          {loading ? (
-            <div className="flex items-center justify-center py-20">
-              <div className="w-10 h-10 border-4 border-md-outline/20 border-t-md-primary rounded-full animate-spin" />
-            </div>
-          ) : (
-            <>
-              <div className="rounded-[28px] overflow-x-auto md-elevation-1 border border-md-outline/5 bg-md-surface-container-low scrollbar-thin">
-                <Table className="min-w-max whitespace-nowrap">
-                  <TableHeader className="bg-md-surface-container">
-                    <TableRow className="border-md-outline/10">
-                      <TableHead className="py-5 font-semibold">School Name</TableHead>
-                      <TableHead className="py-5 font-semibold">Category</TableHead>
-                      <TableHead className="py-5 font-semibold">Contact</TableHead>
-                      <TableHead className="py-5 font-semibold text-center">Students</TableHead>
-                      <TableHead className="py-5 font-semibold text-center">Teachers</TableHead>
-                      <TableHead className="py-5 font-semibold">Date Registered</TableHead>
-                      <TableHead className="py-5 font-semibold text-center">Verified</TableHead>
-                      <TableHead className="py-5 text-right font-semibold sticky right-0 bg-md-surface-container/90 backdrop-blur-md">Actions</TableHead>
+          <div className="rounded-[28px] overflow-x-auto md-elevation-1 border border-md-outline/5 bg-md-surface-container-low scrollbar-thin">
+            <Table className="min-w-max whitespace-nowrap">
+              <TableHeader className="bg-md-surface-container">
+                <TableRow className="border-md-outline/10">
+                  <TableHead className="py-5 font-semibold">School Name</TableHead>
+                  <TableHead className="py-5 font-semibold">Category</TableHead>
+                  <TableHead className="py-5 font-semibold">Contact</TableHead>
+                  <TableHead className="py-5 font-semibold text-center">Students</TableHead>
+                  <TableHead className="py-5 font-semibold text-center">Teachers</TableHead>
+                  <TableHead className="py-5 font-semibold">Date Registered</TableHead>
+                  <TableHead className="py-5 font-semibold text-center">Verified</TableHead>
+                  <TableHead className="py-5 text-right font-semibold sticky right-0 bg-md-surface-container/90 backdrop-blur-md">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {loading ? (
+                  Array.from({ length: 5 }).map((_, i) => (
+                    <TableRow key={`skeleton-${i}`}>
+                      <TableCell className="py-5"><Skeleton className="h-6 w-48" /></TableCell>
+                      <TableCell className="py-5"><Skeleton className="h-6 w-24" /></TableCell>
+                      <TableCell className="py-5"><Skeleton className="h-6 w-32" /></TableCell>
+                      <TableCell className="py-5"><Skeleton className="h-6 w-12 mx-auto" /></TableCell>
+                      <TableCell className="py-5"><Skeleton className="h-6 w-12 mx-auto" /></TableCell>
+                      <TableCell className="py-5"><Skeleton className="h-6 w-24" /></TableCell>
+                      <TableCell className="py-5"><Skeleton className="h-6 w-16 mx-auto" /></TableCell>
+                      <TableCell className="py-5"><Skeleton className="h-8 w-8 ml-auto rounded-full" /></TableCell>
                     </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {schools.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={8} className="text-center py-10 text-md-on-surface-variant font-medium">
-                          {searchTerm ? `No schools found matching "${searchTerm}".` : 'No schools have registered yet.'}
-                        </TableCell>
-                      </TableRow>
-                    ) : (
+                  ))
+                ) : schools.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={8} className="text-center py-10 text-md-on-surface-variant font-medium">
+                      {searchTerm ? `No schools found matching "${searchTerm}".` : 'No schools have registered yet.'}
+                    </TableCell>
+                  </TableRow>
+                ) : (
                       schools.map((school) => {
                         const isVerified = verifiedNames instanceof Map && verifiedNames.has(school.name.trim().toLowerCase());
                         const isVerifying = verifyingId === school.id;
@@ -878,9 +889,9 @@ export default function AdminSchoolsPage() {
               </div>
 
               {/* Pagination */}
-              <Pagination page={page} pageCount={pageCount} onPageChange={setPage} />
-            </>
-          )}
+              {!loading && schools.length > 0 && (
+                <Pagination page={page} pageCount={pageCount} onPageChange={setPage} />
+              )}
         </div>
       </div>
 
