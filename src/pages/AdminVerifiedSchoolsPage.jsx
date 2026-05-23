@@ -1,12 +1,12 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
 import { ShieldCheck, ShieldOff, Search, X, Plus, Trash2, AlertTriangle, School } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/Table';
 
 export default function AdminVerifiedSchoolsPage() {
-  const [verifiedSchools, setVerifiedSchools] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
 
@@ -25,26 +25,29 @@ export default function AdminVerifiedSchoolsPage() {
     return () => clearTimeout(t);
   }, [searchTerm]);
 
-  const fetchVerified = useCallback(async () => {
-    setLoading(true);
-    const { data } = await supabase
-      .from('available_schools')
-      .select('id, name, created_at')
-      .order('name', { ascending: true });
-    setVerifiedSchools(data || []);
-    setLoading(false);
-  }, []);
+  const { data: verifiedSchoolsData, isLoading: loading } = useQuery({
+    queryKey: ['verifiedSchools'],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('available_schools')
+        .select('id, name, created_at')
+        .order('name', { ascending: true });
+      return data || [];
+    }
+  });
 
-  useEffect(() => { fetchVerified(); }, [fetchVerified]);
+  const verifiedSchools = verifiedSchoolsData || [];
 
   // Real-time updates
   useEffect(() => {
     const channel = supabase
       .channel('verified-schools-rt')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'available_schools' }, fetchVerified)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'available_schools' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['verifiedSchools'] });
+      })
       .subscribe();
     return () => supabase.removeChannel(channel);
-  }, [fetchVerified]);
+  }, [queryClient]);
 
   const handleAdd = async () => {
     const name = addName.trim();
@@ -66,7 +69,7 @@ export default function AdminVerifiedSchoolsPage() {
       setAddError('Failed to add school. Please try again.');
     } else {
       setAddName('');
-      await fetchVerified();
+      queryClient.invalidateQueries({ queryKey: ['verifiedSchools'] });
     }
     setAdding(false);
   };
@@ -75,7 +78,7 @@ export default function AdminVerifiedSchoolsPage() {
     if (!window.confirm(`Remove "${school.name}" from the verified list?`)) return;
     setRemovingId(school.id);
     await supabase.from('available_schools').delete().eq('id', school.id);
-    await fetchVerified();
+    queryClient.invalidateQueries({ queryKey: ['verifiedSchools'] });
     setRemovingId(null);
   };
 

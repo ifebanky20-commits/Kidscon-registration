@@ -1,7 +1,12 @@
 import { useState, useRef, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import * as XLSX from 'xlsx';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useForm, useFieldArray } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
+
 import { Button } from '../components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '../components/ui/Card';
 import { Input } from '../components/ui/Input';
@@ -12,64 +17,103 @@ import { supabase } from '../lib/supabase';
 
 const MAX_STUDENTS = 20;
 
+const registrationSchema = z.object({
+  schoolInfo: z.object({
+    name: z.string().min(2, "School name must be at least 2 characters"),
+    category: z.enum(['Primary', 'Secondary', 'Both']),
+    address: z.string().min(5, "Physical address is required"),
+    contactPerson: z.string().min(2, "Contact person is required"),
+    phone: z.string().min(10, "Valid phone number is required"),
+  }),
+  students: z.array(z.object({
+    id: z.number(),
+    name: z.string().min(1, "Name is required"),
+    gender: z.enum(['Male', 'Female']),
+    class: z.string().min(1, "Class is required")
+  })).max(MAX_STUDENTS, `Max ${MAX_STUDENTS} students allowed`),
+  teachers: z.array(z.object({
+    id: z.number(),
+    name: z.string().min(1, "Name is required")
+  }))
+});
+
 export default function RegistrationPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const eventId = searchParams.get('event');
 
-  // Selected event info
-  const [selectedEvent, setSelectedEvent] = useState(null);
-  const [eventLoading, setEventLoading] = useState(true);
-  const [eventError, setEventError] = useState(false);
-
-  useEffect(() => {
-    if (!eventId) { setEventLoading(false); setEventError(true); return; }
-    supabase
-      .from('events')
-      .select('id, name, location, date, is_open')
-      .eq('id', eventId)
-      .single()
-      .then(({ data, error }) => {
-        if (error || !data || !data.is_open) {
-          setEventError(true);
-        } else {
-          setSelectedEvent(data);
-        }
-        setEventLoading(false);
-      });
-  }, [eventId]);
-  const [step, setStep] = useState(() => {
-    const saved = localStorage.getItem('kidscon_reg_step');
-    return saved ? JSON.parse(saved) : 1;
+  const { data: selectedEvent, isLoading: eventLoading, isError: fetchError } = useQuery({
+    queryKey: ['event', eventId],
+    queryFn: async () => {
+      if (!eventId) throw new Error('No event ID');
+      const { data, error } = await supabase
+        .from('events')
+        .select('id, name, location, date, is_open')
+        .eq('id', eventId)
+        .single();
+      if (error || !data || !data.is_open) throw new Error('Invalid event');
+      return data;
+    },
+    retry: false
   });
   
-  // Form State
-  const [schoolInfo, setSchoolInfo] = useState(() => {
-    const saved = localStorage.getItem('kidscon_reg_schoolInfo');
-    return saved ? JSON.parse(saved) : { name: '', category: 'Primary', address: '', contactPerson: '', phone: '' };
-  });
-  const [students, setStudents] = useState(() => {
-    const saved = localStorage.getItem('kidscon_reg_students');
-    return saved ? JSON.parse(saved) : [];
-  });
-  const [teachers, setTeachers] = useState(() => {
-    const saved = localStorage.getItem('kidscon_reg_teachers');
-    return saved ? JSON.parse(saved) : [];
+  const eventError = fetchError || !eventId;
+
+  // Initialize from LocalStorage
+  const getSavedData = () => {
+    try {
+      const step = localStorage.getItem('kidscon_reg_step');
+      const schoolInfo = localStorage.getItem('kidscon_reg_schoolInfo');
+      const students = localStorage.getItem('kidscon_reg_students');
+      const teachers = localStorage.getItem('kidscon_reg_teachers');
+      
+      return {
+        step: step ? JSON.parse(step) : 1,
+        schoolInfo: schoolInfo ? JSON.parse(schoolInfo) : { name: '', category: 'Primary', address: '', contactPerson: '', phone: '' },
+        students: students ? JSON.parse(students) : [],
+        teachers: teachers ? JSON.parse(teachers) : []
+      };
+    } catch {
+      return { step: 1, schoolInfo: { name: '', category: 'Primary', address: '', contactPerson: '', phone: '' }, students: [], teachers: [] };
+    }
+  };
+
+  const savedData = getSavedData();
+  const [step, setStep] = useState(savedData.step);
+
+  const { register, control, watch, handleSubmit, formState: { errors }, setValue, trigger } = useForm({
+    resolver: zodResolver(registrationSchema),
+    defaultValues: {
+      schoolInfo: savedData.schoolInfo,
+      students: savedData.students,
+      teachers: savedData.teachers
+    },
+    mode: 'onTouched'
   });
 
-  // Auto-save form state
+  const { fields: studentFields, append: appendStudent, remove: removeStudent } = useFieldArray({
+    control, name: "students"
+  });
+  
+  const { fields: teacherFields, append: appendTeacher, remove: removeTeacher } = useFieldArray({
+    control, name: "teachers"
+  });
+
+  const formData = watch();
+  
+  // Auto-save form state silently in the background
   useEffect(() => {
     localStorage.setItem('kidscon_reg_step', JSON.stringify(step));
-    localStorage.setItem('kidscon_reg_schoolInfo', JSON.stringify(schoolInfo));
-    localStorage.setItem('kidscon_reg_students', JSON.stringify(students));
-    localStorage.setItem('kidscon_reg_teachers', JSON.stringify(teachers));
-  }, [step, schoolInfo, students, teachers]);
-  
+    localStorage.setItem('kidscon_reg_schoolInfo', JSON.stringify(formData.schoolInfo));
+    localStorage.setItem('kidscon_reg_students', JSON.stringify(formData.students));
+    localStorage.setItem('kidscon_reg_teachers', JSON.stringify(formData.teachers));
+  }, [step, formData]);
+
   // Modal State
   const [isStudentModalOpen, setIsStudentModalOpen] = useState(false);
   const [newStudent, setNewStudent] = useState({ name: '', gender: 'Male', class: '' });
-  
   const [newTeacherName, setNewTeacherName] = useState('');
+  
   const [submitLoading, setSubmitLoading] = useState(false);
   const [submitError, setSubmitError] = useState('');
 
@@ -78,14 +122,16 @@ export default function RegistrationPage() {
   const [uploadError, setUploadError] = useState('');
   const [uploadCount, setUploadCount] = useState(null);
 
-  // Verified schools
-  const [verifiedSchools, setVerifiedSchools] = useState([]);
-  useEffect(() => {
-    supabase.from('available_schools').select('name').then(({ data }) => {
-      if (data) setVerifiedSchools(data.map(s => s.name.toLowerCase()));
-    });
-  }, []);
-  const isVerified = verifiedSchools.includes(schoolInfo.name.trim().toLowerCase());
+  // Verified schools mapping (cached efficiently by query)
+  const { data: verifiedSchoolsData } = useQuery({
+    queryKey: ['verifiedSchoolsList'],
+    queryFn: async () => {
+      const { data } = await supabase.from('available_schools').select('name');
+      return data ? data.map(s => s.name.toLowerCase()) : [];
+    }
+  });
+  const verifiedSchools = verifiedSchoolsData || [];
+  const isVerified = verifiedSchools.includes((formData.schoolInfo?.name || '').trim().toLowerCase());
 
   const handleExcelUpload = (e) => {
     const file = e.target.files[0];
@@ -105,7 +151,6 @@ export default function RegistrationPage() {
           return;
         }
 
-        // Normalise column headers to lowercase for flexible matching
         const parsed = [];
         const skipped = [];
 
@@ -128,21 +173,22 @@ export default function RegistrationPage() {
           return;
         }
 
-        setStudents(prev => {
-          const existing = new Set(prev.map(s => s.name.toLowerCase()));
-          const newOnes = parsed.filter(s => !existing.has(s.name.toLowerCase()));
-          const available = MAX_STUDENTS - prev.length;
-          if (available <= 0) {
-            setUploadError(`Maximum of ${MAX_STUDENTS} students reached. No new students were added.`);
-            return prev;
-          }
-          const trimmed = newOnes.slice(0, available);
-          if (trimmed.length < newOnes.length) {
-            setUploadError(`Only ${trimmed.length} student(s) added — maximum of ${MAX_STUDENTS} students reached.`);
-          }
-          return [...prev, ...trimmed];
-        });
-
+        const prevStudents = formData.students;
+        const existing = new Set(prevStudents.map(s => s.name.toLowerCase()));
+        const newOnes = parsed.filter(s => !existing.has(s.name.toLowerCase()));
+        const available = MAX_STUDENTS - prevStudents.length;
+        
+        if (available <= 0) {
+          setUploadError(`Maximum of ${MAX_STUDENTS} students reached. No new students were added.`);
+          return;
+        }
+        
+        const trimmed = newOnes.slice(0, available);
+        if (trimmed.length < newOnes.length) {
+          setUploadError(`Only ${trimmed.length} student(s) added — maximum of ${MAX_STUDENTS} students reached.`);
+        }
+        
+        setValue('students', [...prevStudents, ...trimmed], { shouldValidate: true });
         setUploadCount(parsed.length);
         if (skipped.length) setUploadError(`${skipped.length} row(s) skipped (missing name).`);
       } catch {
@@ -150,76 +196,69 @@ export default function RegistrationPage() {
       }
     };
     reader.readAsArrayBuffer(file);
-    // Reset so the same file can be re-uploaded if needed
     e.target.value = '';
   };
 
+  const handleNext = async () => {
+    if (step === 1) {
+      const isStepValid = await trigger('schoolInfo');
+      if (isStepValid) setStep(2);
+    } else if (step === 2) {
+      if (formData.students.length > 0) setStep(3);
+    } else if (step === 3) {
+      setStep(4);
+    }
+  };
 
-
-  const handleNext = () => setStep(s => s + 1);
   const handlePrev = () => setStep(s => s - 1);
 
   const isNextDisabled = () => {
-    if (step === 1) {
-      return !schoolInfo.name.trim() || !schoolInfo.category || !schoolInfo.address.trim() || !schoolInfo.contactPerson.trim() || !schoolInfo.phone.trim();
-    }
-    if (step === 2) {
-      return students.length === 0;
-    }
-    // Step 3 (Teachers) is optional
+    if (step === 2) return formData.students.length === 0;
     return false;
   };
 
-  const isAtStudentLimit = students.length >= MAX_STUDENTS;
+  const isAtStudentLimit = formData.students.length >= MAX_STUDENTS;
   
   const handleAddStudent = () => {
     if (newStudent.name && newStudent.class) {
-      if (students.length >= MAX_STUDENTS) return;
-      setStudents([...students, { ...newStudent, id: Date.now() }]);
+      if (formData.students.length >= MAX_STUDENTS) return;
+      appendStudent({ ...newStudent, id: Date.now() });
       setNewStudent({ name: '', gender: 'Male', class: '' });
       setIsStudentModalOpen(false);
     }
   };
 
-  const handleRemoveStudent = (id) => {
-    setStudents(students.filter(s => s.id !== id));
-  };
-
   const handleAddTeacher = () => {
     if (newTeacherName.trim()) {
-      setTeachers([...teachers, { name: newTeacherName, id: Date.now() }]);
+      appendTeacher({ name: newTeacherName, id: Date.now() });
       setNewTeacherName('');
     }
   };
 
-  const handleRemoveTeacher = (id) => {
-    setTeachers(teachers.filter(t => t.id !== id));
-  };
-  const handleSubmit = async () => {
+  const onSubmit = async (data) => {
     setSubmitLoading(true);
     setSubmitError('');
     try {
-      // Generate UUID locally so we don't need to .select() it back (which triggers RLS block)
       const schoolId = crypto.randomUUID();
 
       const { error: schoolError } = await supabase
         .from('schools')
         .insert({
           id: schoolId,
-          name: schoolInfo.name,
-          category: schoolInfo.category,
-          address: schoolInfo.address,
-          contact_person: schoolInfo.contactPerson,
-          phone: schoolInfo.phone,
+          name: data.schoolInfo.name,
+          category: data.schoolInfo.category,
+          address: data.schoolInfo.address,
+          contact_person: data.schoolInfo.contactPerson,
+          phone: data.schoolInfo.phone,
           event_id: eventId || null,
         });
 
       if (schoolError) throw schoolError;
 
-      if (students.length > 0) {
+      if (data.students.length > 0) {
         const { error: studentsError } = await supabase
           .from('students')
-          .insert(students.map(s => ({
+          .insert(data.students.map(s => ({
             school_id: schoolId,
             name: s.name,
             gender: s.gender,
@@ -228,20 +267,19 @@ export default function RegistrationPage() {
         if (studentsError) throw studentsError;
       }
 
-      if (teachers.length > 0) {
+      if (data.teachers.length > 0) {
         const { error: teachersError } = await supabase
           .from('teachers')
-          .insert(teachers.map(t => ({ school_id: schoolId, name: t.name })));
+          .insert(data.teachers.map(t => ({ school_id: schoolId, name: t.name })));
         if (teachersError) throw teachersError;
       }
 
-      // Clear local storage upon successful submission
       localStorage.removeItem('kidscon_reg_step');
       localStorage.removeItem('kidscon_reg_schoolInfo');
       localStorage.removeItem('kidscon_reg_students');
       localStorage.removeItem('kidscon_reg_teachers');
 
-      navigate('/confirmation', { state: { totalStudents: students.length, schoolName: schoolInfo.name } });
+      navigate('/confirmation', { state: { totalStudents: data.students.length, schoolName: data.schoolInfo.name } });
     } catch (err) {
       setSubmitError('Failed to register. Please check your connection and try again.');
       console.error('Registration error:', err);
@@ -252,7 +290,6 @@ export default function RegistrationPage() {
 
   const stepIcons = [BookOpen, Users, UserPlus, CheckCircle];
 
-  // ── Event loading / error gates ─────────────────────────────────────────
   if (eventLoading) {
     return (
       <div className="flex items-center justify-center py-32">
@@ -284,8 +321,6 @@ export default function RegistrationPage() {
 
   return (
     <div className="max-w-4xl mx-auto relative z-10">
-      
-      {/* Event context banner */}
       <div className="mb-8 bg-md-secondary-container/40 rounded-[20px] px-6 py-4 flex flex-col sm:flex-row sm:items-center gap-3 ring-1 ring-md-outline/10 animate-in fade-in slide-in-from-top-2 duration-500 ease-md">
         <div className="flex items-center gap-2 text-md-on-secondary-container font-bold text-sm">
           <CalendarDays size={16} className="text-md-primary shrink-0" />
@@ -304,11 +339,9 @@ export default function RegistrationPage() {
         </div>
       </div>
       
-      {/* Decorative Blobs */}
       <div className="fixed top-20 left-10 w-[300px] h-[300px] bg-md-secondary-container/40 blur-[80px] rounded-full -z-10 mix-blend-multiply" />
       <div className="fixed bottom-20 right-10 w-[400px] h-[400px] bg-md-primary/10 blur-[100px] rounded-full -z-10 mix-blend-multiply" />
 
-      {/* Progress Indicator */}
       <div className="mb-14 px-2 sm:px-8">
         <div className="flex justify-between items-start relative h-20">
           <div className="absolute left-8 right-8 sm:left-14 sm:right-14 top-6 h-1 bg-md-surface-container-low -z-10 rounded-full">
@@ -355,7 +388,6 @@ export default function RegistrationPage() {
         
         <CardContent className="min-h-[350px] p-8 max-w-full overflow-hidden">
           <AnimatePresence mode="wait" initial={false}>
-          {/* STEP 1: School Info */}
           {step === 1 && (
             <motion.div
               key="step1"
@@ -365,15 +397,14 @@ export default function RegistrationPage() {
               transition={{ type: "spring", duration: 0.45, bounce: 0 }}
               className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-8"
             >
-              {/* School name with verified badge */}
               <div>
                 <Input
                   label="School Name"
                   placeholder="Enter your school's full name"
-                  value={schoolInfo.name}
-                  onChange={e => setSchoolInfo({...schoolInfo, name: e.target.value})}
+                  {...register('schoolInfo.name')}
+                  error={errors.schoolInfo?.name?.message}
                 />
-                {schoolInfo.name.trim() && (
+                {(formData.schoolInfo?.name || '').trim() && (
                   <div className={`flex items-center gap-1.5 mt-2 ml-4 text-xs font-semibold transition-all ${
                     isVerified ? 'text-green-600' : 'text-md-on-surface-variant/60'
                   }`}>
@@ -387,8 +418,7 @@ export default function RegistrationPage() {
                 <label className="block text-sm font-medium text-md-on-surface-variant mb-1 pl-4 transition-colors group-focus-within:text-md-primary">School Category</label>
                 <select 
                   className="flex h-14 w-full rounded-t-lg rounded-b-none border-b-2 border-md-outline bg-md-surface-container-low px-4 py-2 text-base focus:outline-none focus:border-md-primary focus:bg-md-surface-container-low/80 transition-all duration-200 ease-md"
-                  value={schoolInfo.category}
-                  onChange={e => setSchoolInfo({...schoolInfo, category: e.target.value})}
+                  {...register('schoolInfo.category')}
                 >
                   <option value="Primary">Primary</option>
                   <option value="Secondary">Secondary</option>
@@ -398,26 +428,25 @@ export default function RegistrationPage() {
               <Input 
                 label="Physical Address" 
                 placeholder="Where is the school located?"
-                value={schoolInfo.address}
-                onChange={e => setSchoolInfo({...schoolInfo, address: e.target.value})}
+                {...register('schoolInfo.address')}
+                error={errors.schoolInfo?.address?.message}
               />
               <Input 
                 label="Contact Person Name" 
                 placeholder="Principal or representative"
-                value={schoolInfo.contactPerson}
-                onChange={e => setSchoolInfo({...schoolInfo, contactPerson: e.target.value})}
+                {...register('schoolInfo.contactPerson')}
+                error={errors.schoolInfo?.contactPerson?.message}
               />
               <Input 
                 label="Phone Number" 
                 type="tel" 
                 placeholder="e.g. 08012345678"
-                value={schoolInfo.phone}
-                onChange={e => setSchoolInfo({...schoolInfo, phone: e.target.value})}
+                {...register('schoolInfo.phone')}
+                error={errors.schoolInfo?.phone?.message}
               />
             </motion.div>
           )}
 
-          {/* STEP 2: Students */}
           {step === 2 && (
             <motion.div
               key="step2"
@@ -427,7 +456,6 @@ export default function RegistrationPage() {
               transition={{ type: "spring", duration: 0.45, bounce: 0 }}
               className="space-y-6"
             >
-              {/* Hidden file input */}
               <input
                 ref={fileInputRef}
                 type="file"
@@ -438,7 +466,7 @@ export default function RegistrationPage() {
 
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-md-surface-container-low p-4 rounded-2xl">
                 <div className="ml-2">
-                  <p className="text-md-on-surface-variant font-medium">Total Students: <span className={`font-bold text-2xl ml-2 ${isAtStudentLimit ? 'text-md-error' : 'text-md-primary'}`}>{students.length}</span><span className="text-md-on-surface-variant/60 text-base font-medium"> / {MAX_STUDENTS}</span></p>
+                  <p className="text-md-on-surface-variant font-medium">Total Students: <span className={`font-bold text-2xl ml-2 ${isAtStudentLimit ? 'text-md-error' : 'text-md-primary'}`}>{formData.students.length}</span><span className="text-md-on-surface-variant/60 text-base font-medium"> / {MAX_STUDENTS}</span></p>
                   {isAtStudentLimit && (
                     <p className="text-xs font-semibold text-md-error mt-1 flex items-center gap-1"><AlertCircle size={12} /> Maximum of {MAX_STUDENTS} students reached</p>
                   )}
@@ -459,7 +487,6 @@ export default function RegistrationPage() {
                 </div>
               )}
 
-              {/* Upload feedback */}
               {uploadCount !== null && !uploadError && (
                 <div className="flex items-center gap-2 bg-green-50 text-green-700 p-3 rounded-xl text-sm font-semibold">
                   <FileCheck size={16} /> {uploadCount} student{uploadCount !== 1 ? 's' : ''} imported successfully.
@@ -471,7 +498,7 @@ export default function RegistrationPage() {
                 </div>
               )}
 
-              {students.length === 0 ? (
+              {studentFields.length === 0 ? (
                 <div className="text-center py-16 border-2 border-dashed border-md-outline/30 rounded-3xl bg-md-surface-container">
                   <p className="text-md-on-surface-variant text-lg">No students added yet.</p>
                   <Button variant="ghost" className="mt-4 gap-2 text-md-primary" onClick={() => setIsStudentModalOpen(true)}>
@@ -489,19 +516,19 @@ export default function RegistrationPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {students.map(s => (
-                      <TableRow key={s.id}>
-                        <TableCell className="font-medium text-md-on-background">{s.name}</TableCell>
+                    {studentFields.map((field, index) => (
+                      <TableRow key={field.id}>
+                        <TableCell className="font-medium text-md-on-background">{field.name}</TableCell>
                         <TableCell>
                           <span className={`inline-flex px-3 py-1 rounded-full text-xs font-semibold tracking-wide ${
-                            s.gender === 'Female' ? 'bg-[#FFD8E4] text-[#31111D]' : 'bg-md-secondary-container text-md-on-secondary-container'
+                            field.gender === 'Female' ? 'bg-[#FFD8E4] text-[#31111D]' : 'bg-md-secondary-container text-md-on-secondary-container'
                           }`}>
-                            {s.gender}
+                            {field.gender}
                           </span>
                         </TableCell>
-                        <TableCell className="text-md-on-surface-variant font-medium">{s.class}</TableCell>
+                        <TableCell className="text-md-on-surface-variant font-medium">{field.class}</TableCell>
                         <TableCell className="text-right">
-                          <button onClick={() => handleRemoveStudent(s.id)} className="text-md-on-surface-variant hover:text-md-error hover:bg-md-error/10 transition-colors p-2 rounded-full active:scale-95">
+                          <button onClick={() => removeStudent(index)} className="text-md-on-surface-variant hover:text-md-error hover:bg-md-error/10 transition-colors p-2 rounded-full active:scale-95">
                             <Trash2 size={18} />
                           </button>
                         </TableCell>
@@ -513,7 +540,6 @@ export default function RegistrationPage() {
             </motion.div>
           )}
 
-          {/* STEP 3: Teachers */}
           {step === 3 && (
             <motion.div
               key="step3"
@@ -532,22 +558,22 @@ export default function RegistrationPage() {
                   onKeyDown={e => e.key === 'Enter' && handleAddTeacher()}
                   className="flex-1"
                 />
-                <Button onClick={handleAddTeacher} variant="secondary" className="sm:mt-6 px-8 whitespace-nowrap h-14 md-elevation-1 shadow-md">
+                <Button onClick={handleAddTeacher} variant="secondary" type="button" className="sm:mt-6 px-8 whitespace-nowrap h-14 md-elevation-1 shadow-md">
                   <Plus size={18} className="mr-2" /> Add Teacher
                 </Button>
               </div>
 
-              {teachers.length === 0 ? (
+              {teacherFields.length === 0 ? (
                 <div className="text-center py-12 rounded-3xl bg-md-surface-container-low border border-md-outline/10 text-md-on-surface-variant">
                   <p>No teachers currently assigned to this registration.</p>
                 </div>
               ) : (
                 <div className="bg-md-surface-container rounded-[24px] border border-md-outline/10 overflow-hidden md-elevation-1">
                   <ul className="divide-y divide-md-outline/10">
-                    {teachers.map(t => (
-                      <li key={t.id} className="p-4 px-6 flex justify-between items-center group hover:bg-md-surface-container-low/50 transition-colors">
-                        <span className="font-medium text-lg text-md-on-background tracking-tight">{t.name}</span>
-                        <button onClick={() => handleRemoveTeacher(t.id)} className="text-md-on-surface-variant hover:text-md-error hover:bg-md-error/10 transition-colors p-2 rounded-full active:scale-95 opacity-0 group-hover:opacity-100">
+                    {teacherFields.map((field, index) => (
+                      <li key={field.id} className="p-4 px-6 flex justify-between items-center group hover:bg-md-surface-container-low/50 transition-colors">
+                        <span className="font-medium text-lg text-md-on-background tracking-tight">{field.name}</span>
+                        <button onClick={() => removeTeacher(index)} type="button" className="text-md-on-surface-variant hover:text-md-error hover:bg-md-error/10 transition-colors p-2 rounded-full active:scale-95 opacity-0 group-hover:opacity-100">
                           <Trash2 size={18} />
                         </button>
                       </li>
@@ -558,7 +584,6 @@ export default function RegistrationPage() {
             </motion.div>
           )}
 
-          {/* STEP 4: Review */}
           {step === 4 && (
             <motion.div
               key="step4"
@@ -577,20 +602,20 @@ export default function RegistrationPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 gap-y-8">
                   <div>
                     <span className="text-md-on-surface-variant text-sm font-medium tracking-wide uppercase block mb-1">School Name</span>
-                    <span className="font-semibold text-lg text-md-on-background">{schoolInfo.name || 'Not Provided'}</span>
+                    <span className="font-semibold text-lg text-md-on-background">{formData.schoolInfo?.name || 'Not Provided'}</span>
                   </div>
                   <div>
                     <span className="text-md-on-surface-variant text-sm font-medium tracking-wide uppercase block mb-1">Category</span>
-                    <span className="font-semibold text-lg text-md-on-background">{schoolInfo.category || 'Not Provided'}</span>
+                    <span className="font-semibold text-lg text-md-on-background">{formData.schoolInfo?.category || 'Not Provided'}</span>
                   </div>
                   <div>
                     <span className="text-md-on-surface-variant text-sm font-medium tracking-wide uppercase block mb-1">Physical Address</span>
-                    <span className="font-semibold text-base text-md-on-background">{schoolInfo.address || 'Not Provided'}</span>
+                    <span className="font-semibold text-base text-md-on-background">{formData.schoolInfo?.address || 'Not Provided'}</span>
                   </div>
                   <div>
                     <span className="text-md-on-surface-variant text-sm font-medium tracking-wide uppercase block mb-1">Contact Details</span>
-                    <span className="font-semibold text-base text-md-on-background block">{schoolInfo.contactPerson || '-'}</span>
-                    <span className="text-md-on-surface-variant">{schoolInfo.phone || '-'}</span>
+                    <span className="font-semibold text-base text-md-on-background block">{formData.schoolInfo?.contactPerson || '-'}</span>
+                    <span className="text-md-on-surface-variant">{formData.schoolInfo?.phone || '-'}</span>
                   </div>
                 </div>
               </div>
@@ -598,11 +623,11 @@ export default function RegistrationPage() {
               <div className="flex flex-col sm:flex-row gap-6">
                 <div className="flex-1 bg-md-secondary-container text-md-on-secondary-container p-6 rounded-[24px] text-center md-elevation-1 transition-transform hover:scale-[1.02] duration-300 ease-md">
                   <p className="font-semibold tracking-wide uppercase mb-2 opacity-80 text-sm">Total Students</p>
-                  <p className="text-5xl font-extrabold">{students.length}</p>
+                  <p className="text-5xl font-extrabold">{formData.students.length}</p>
                 </div>
                 <div className="flex-1 bg-md-tertiary text-md-on-tertiary p-6 rounded-[24px] text-center md-elevation-1 transition-transform hover:scale-[1.02] duration-300 ease-md">
                   <p className="font-semibold tracking-wide uppercase mb-2 opacity-80 text-sm">Total Teachers</p>
-                  <p className="text-5xl font-extrabold">{teachers.length}</p>
+                  <p className="text-5xl font-extrabold">{formData.teachers.length}</p>
                 </div>
               </div>
             </motion.div>
@@ -637,7 +662,7 @@ export default function RegistrationPage() {
             </Button>
           ) : (
             <Button 
-              onClick={handleSubmit} 
+              onClick={handleSubmit(onSubmit)} 
               variant="primary" 
               disabled={submitLoading}
               className="gap-2 px-10 h-14 text-lg font-bold bg-md-primary hover:bg-md-primary/90 md-elevation-2 hover:md-elevation-3 transition-opacity"
@@ -683,7 +708,7 @@ export default function RegistrationPage() {
           
           <Input 
             label="Class Details" 
-            placeholder={schoolInfo.category === 'Secondary' ? "e.g. JSS 2" : "e.g. Primary 5"}
+            placeholder={formData.schoolInfo?.category === 'Secondary' ? "e.g. JSS 2" : "e.g. Primary 5"}
             value={newStudent.class}
             onChange={e => setNewStudent({...newStudent, class: e.target.value})}
           />
@@ -694,7 +719,6 @@ export default function RegistrationPage() {
           </div>
         </div>
       </Modal>
-
     </div>
   );
 }

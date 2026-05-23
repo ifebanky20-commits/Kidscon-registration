@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import * as XLSX from 'xlsx';
 import { Document, Packer, Paragraph, Table as DocxTable, TableRow as DocxTableRow, TableCell as DocxTableCell, TextRun, HeadingLevel, WidthType, AlignmentType, BorderStyle } from 'docx';
 import { Link, useNavigate } from 'react-router-dom';
@@ -465,8 +466,8 @@ function MergeSchoolsModal({ onClose, onMerged }) {
 
 export default function AdminSchoolsPage() {
   const navigate = useNavigate();
-  const [schools, setSchools] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
+  
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
   const [mergeOpen, setMergeOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -479,40 +480,6 @@ export default function AdminSchoolsPage() {
   const [selectedCategory, setSelectedCategory] = useState('All');
 
   const [page, setPage] = useState(0);
-  const [totalCount, setTotalCount] = useState(0);
-  const pageCount = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
-
-  // Verified schools — names stored in available_schools table
-  const [verifiedNames, setVerifiedNames] = useState(new Set());
-  const [verifyingId, setVerifyingId] = useState(null); // school id currently being toggled
-
-  const fetchVerifiedSchools = useCallback(async () => {
-    const { data } = await supabase.from('available_schools').select('id, name');
-    if (data) setVerifiedNames(new Map(data.map(s => [s.name.trim().toLowerCase(), s.id])));
-  }, []);
-
-  useEffect(() => { fetchVerifiedSchools(); }, [fetchVerifiedSchools]);
-
-  const handleVerifySchool = async (e, school) => {
-    e.stopPropagation();
-    const key = school.name.trim().toLowerCase();
-    const existingId = verifiedNames instanceof Map ? verifiedNames.get(key) : undefined;
-    setVerifyingId(school.id);
-    try {
-      if (existingId) {
-        // Unverify — remove from available_schools
-        await supabase.from('available_schools').delete().eq('id', existingId);
-      } else {
-        // Verify — add to available_schools
-        await supabase.from('available_schools').insert({ name: school.name.trim() });
-      }
-      await fetchVerifiedSchools();
-    } catch (err) {
-      console.error('Verification toggle failed:', err);
-    } finally {
-      setVerifyingId(null);
-    }
-  };
 
   // Debounce search — reset to page 0 on new query
   useEffect(() => {
@@ -523,48 +490,79 @@ export default function AdminSchoolsPage() {
     return () => clearTimeout(t);
   }, [searchTerm]);
 
-  const fetchRegisteredSchools = useCallback(async (p, search, eventId, category) => {
-    setLoading(true);
-    const from = p * PAGE_SIZE;
-    const to = from + PAGE_SIZE - 1;
-    let query = supabase
-      .from('schools')
-      .select(`
-        id, name, category, address, contact_person, phone, created_at,
-        students(count), teachers(count)
-      `, { count: 'exact' })
-      .order('created_at', { ascending: false })
-      .range(from, to);
-
-    if (search) query = query.ilike('name', `%${search}%`);
-    if (eventId) query = query.eq('event_id', eventId);
-    if (category && category !== 'All') query = query.ilike('category', `%${category}%`);
-
-    const { data, count, error } = await query;
-    if (!error) {
-      setSchools(data || []);
-      setTotalCount(count ?? 0);
+  // React Query: Verified Schools (cached mapping)
+  const { data: verifiedNamesMap } = useQuery({
+    queryKey: ['verifiedSchools'],
+    queryFn: async () => {
+      const { data } = await supabase.from('available_schools').select('id, name');
+      if (!data) return new Map();
+      return new Map(data.map(s => [s.name.trim().toLowerCase(), s.id]));
     }
-    setLoading(false);
-  }, []);
+  });
+  const verifiedNames = verifiedNamesMap || new Map();
+  const [verifyingId, setVerifyingId] = useState(null);
 
+  const handleVerifySchool = async (e, school) => {
+    e.stopPropagation();
+    const key = school.name.trim().toLowerCase();
+    const existingId = verifiedNames.get(key);
+    setVerifyingId(school.id);
+    try {
+      if (existingId) {
+        await supabase.from('available_schools').delete().eq('id', existingId);
+      } else {
+        await supabase.from('available_schools').insert({ name: school.name.trim() });
+      }
+      queryClient.invalidateQueries({ queryKey: ['verifiedSchools'] });
+    } catch (err) {
+      console.error('Verification toggle failed:', err);
+    } finally {
+      setVerifyingId(null);
+    }
+  };
+
+  // React Query: Registered Schools (paginated & filtered)
+  const { data: schoolsData, isLoading: loading } = useQuery({
+    queryKey: ['registeredSchools', page, debouncedSearch, selectedEventId, selectedCategory],
+    queryFn: async () => {
+      const from = page * PAGE_SIZE;
+      const to = from + PAGE_SIZE - 1;
+      let query = supabase
+        .from('schools')
+        .select(`
+          id, name, category, address, contact_person, phone, created_at,
+          students(count), teachers(count)
+        `, { count: 'exact' })
+        .order('created_at', { ascending: false })
+        .range(from, to);
+
+      if (debouncedSearch) query = query.ilike('name', `%${debouncedSearch}%`);
+      if (selectedEventId) query = query.eq('event_id', selectedEventId);
+      if (selectedCategory && selectedCategory !== 'All') query = query.ilike('category', `%${selectedCategory}%`);
+
+      const { data, count, error } = await query;
+      if (error) throw error;
+      return { schools: data || [], totalCount: count ?? 0 };
+    },
+    placeholderData: (previousData) => previousData // Smooth pagination without jitter
+  });
+
+  const schools = schoolsData?.schools || [];
+  const totalCount = schoolsData?.totalCount || 0;
+  const pageCount = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
+
+  // Real-time subscriptions
   useEffect(() => {
-    fetchRegisteredSchools(0, '', selectedEventId, selectedCategory);
-
-    // Real-time subscription
     const channel = supabase
       .channel('registered-schools-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'schools' },  () => fetchRegisteredSchools(page, debouncedSearch, selectedEventId, selectedCategory))
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'students' }, () => fetchRegisteredSchools(page, debouncedSearch, selectedEventId, selectedCategory))
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'teachers' }, () => fetchRegisteredSchools(page, debouncedSearch, selectedEventId, selectedCategory))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'schools' }, () => queryClient.invalidateQueries({ queryKey: ['registeredSchools'] }))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'students' }, () => queryClient.invalidateQueries({ queryKey: ['registeredSchools'] }))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'teachers' }, () => queryClient.invalidateQueries({ queryKey: ['registeredSchools'] }))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'available_schools' }, () => queryClient.invalidateQueries({ queryKey: ['verifiedSchools'] }))
       .subscribe();
 
     return () => supabase.removeChannel(channel);
-  }, [selectedEventId, selectedCategory]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  useEffect(() => {
-    fetchRegisteredSchools(page, debouncedSearch, selectedEventId, selectedCategory);
-  }, [page, debouncedSearch, selectedEventId, selectedCategory, fetchRegisteredSchools]);
+  }, [queryClient]);
 
   const handleDeleteSchool = async (e, school) => {
     e.stopPropagation();
@@ -573,11 +571,13 @@ export default function AdminSchoolsPage() {
       await supabase.from('students').delete().eq('school_id', school.id);
       await supabase.from('teachers').delete().eq('school_id', school.id);
       await supabase.from('schools').delete().eq('id', school.id);
+      
+      queryClient.invalidateQueries({ queryKey: ['registeredSchools'] });
+      
       const newTotal = totalCount - 1;
       const newPageCount = Math.max(1, Math.ceil(newTotal / PAGE_SIZE));
       const safePage = Math.min(page, newPageCount - 1);
       setPage(safePage);
-      fetchRegisteredSchools(safePage, debouncedSearch);
     } catch (err) {
       console.error('Delete failed:', err);
       alert(`Failed to delete: ${err.message || JSON.stringify(err)}`);

@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/Table';
 import { Button } from '../components/ui/Button';
@@ -9,8 +10,6 @@ import { useEvent } from '../context/EventContext';
 const PAGE_SIZE = 15;
 
 export default function AdminStudentsPage() {
-  const [students, setStudents] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
 
@@ -18,8 +17,6 @@ export default function AdminStudentsPage() {
   const { events, selectedEventId, setSelectedEventId } = useEvent();
 
   const [page, setPage] = useState(0);
-  const [totalCount, setTotalCount] = useState(0);
-  const pageCount = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
 
   // Debounce search so we don't hit Supabase on every keystroke
   useEffect(() => {
@@ -30,48 +27,44 @@ export default function AdminStudentsPage() {
     return () => clearTimeout(t);
   }, [searchTerm]);
 
-  const fetchStudents = useCallback(async (p, search, eventId) => {
-    setLoading(true);
-    const from = p * PAGE_SIZE;
-    const to = from + PAGE_SIZE - 1;
+  const { data: studentsData, isLoading: loading } = useQuery({
+    queryKey: ['students', page, debouncedSearch, selectedEventId],
+    queryFn: async () => {
+      const from = page * PAGE_SIZE;
+      const to = from + PAGE_SIZE - 1;
 
-    // If an event is selected, first get the school IDs for that event
-    let schoolIds = null;
-    if (eventId) {
-      const { data: schools } = await supabase
-        .from('schools')
-        .select('id')
-        .eq('event_id', eventId);
-      schoolIds = (schools || []).map((s) => s.id);
-      if (schoolIds.length === 0) {
-        // No schools for this event — return empty result
-        setStudents([]);
-        setTotalCount(0);
-        setLoading(false);
-        return;
+      // If an event is selected, first get the school IDs for that event
+      let schoolIds = null;
+      if (selectedEventId) {
+        const { data: schools } = await supabase
+          .from('schools')
+          .select('id')
+          .eq('event_id', selectedEventId);
+        schoolIds = (schools || []).map((s) => s.id);
+        if (schoolIds.length === 0) {
+          return { students: [], totalCount: 0 };
+        }
       }
-    }
 
-    let query = supabase
-      .from('students')
-      .select('*, schools(name)', { count: 'exact' })
-      .order('created_at', { ascending: false })
-      .range(from, to);
+      let query = supabase
+        .from('students')
+        .select('*, schools(name)', { count: 'exact' })
+        .order('created_at', { ascending: false })
+        .range(from, to);
 
-    if (search) query = query.ilike('name', `%${search}%`);
-    if (schoolIds) query = query.in('school_id', schoolIds);
+      if (debouncedSearch) query = query.ilike('name', `%${debouncedSearch}%`);
+      if (schoolIds) query = query.in('school_id', schoolIds);
 
-    const { data, count, error } = await query;
-    if (!error) {
-      setStudents(data || []);
-      setTotalCount(count ?? 0);
-    }
-    setLoading(false);
-  }, []);
+      const { data, count, error } = await query;
+      if (error) throw error;
+      return { students: data || [], totalCount: count ?? 0 };
+    },
+    placeholderData: (previousData) => previousData
+  });
 
-  useEffect(() => {
-    fetchStudents(page, debouncedSearch, selectedEventId);
-  }, [page, debouncedSearch, selectedEventId, fetchStudents]);
+  const students = studentsData?.students || [];
+  const totalCount = studentsData?.totalCount || 0;
+  const pageCount = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-300 ease-md pb-12">
