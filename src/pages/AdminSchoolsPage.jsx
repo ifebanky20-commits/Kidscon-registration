@@ -617,40 +617,76 @@ export default function AdminSchoolsPage() {
   return (
     <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-300 ease-md pb-12">
 
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      {/* ── HEADER ROW ── */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
           <h1 className="text-3xl font-bold text-md-on-background tracking-tight">Registered Schools</h1>
           <p className="text-md-on-surface-variant font-medium mt-1">A comprehensive list of all schools that have registered for the selected event.</p>
         </div>
-        <div className="flex flex-wrap items-center gap-3 shrink-0">
+        <div className="flex flex-wrap items-center gap-3">
           {/* Event filter */}
           {events.length > 0 && (
-            <div className="flex items-center gap-2">
-              <CalendarDays size={16} className="text-md-on-surface-variant" />
+            <div className="flex items-center gap-2 bg-md-surface-container-low border border-md-outline/10 p-1.5 rounded-full shadow-sm">
+              <CalendarDays size={16} className="text-md-on-surface-variant ml-2" />
               <div className="relative">
                 <select
                   value={selectedEventId || ''}
                   onChange={(e) => { setSelectedEventId(e.target.value || null); setPage(0); }}
-                  className="appearance-none h-10 pl-4 pr-10 rounded-full border border-md-outline/20 bg-md-surface-container text-md-on-background text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-md-primary/40 transition cursor-pointer"
+                  className="appearance-none h-8 pl-2 pr-8 rounded-full border-none bg-transparent text-md-on-background text-sm font-semibold focus:outline-none transition cursor-pointer"
                 >
                   <option value="">All Events</option>
                   {events.map((ev) => <option key={ev.id} value={ev.id}>{ev.name}</option>)}
                 </select>
-                <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-md-on-surface-variant pointer-events-none" />
+                <ChevronDown size={14} className="absolute right-2 top-1/2 -translate-y-1/2 text-md-on-surface-variant pointer-events-none" />
               </div>
             </div>
           )}
 
+          <Button
+            onClick={() => setMergeOpen(true)}
+            variant="outline"
+            className="gap-2 shadow-sm font-semibold border-amber-300 text-amber-700 hover:bg-amber-50 h-11 rounded-full"
+          >
+            <GitMerge size={18} /> Merge Duplicates
+          </Button>
+        </div>
+      </div>
+
+      {/* ── FILTER & ACTION CARD ── */}
+      <div className="bg-md-surface-container-low border border-md-outline/5 rounded-[28px] p-4 sm:p-6 flex flex-col xl:flex-row justify-between items-stretch xl:items-center gap-4 shadow-sm">
+        {/* Search Input Box */}
+        <div className="relative w-full xl:max-w-md">
+          <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-md-on-surface-variant pointer-events-none" />
+          <input
+            type="text"
+            placeholder="Search by school name…"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full h-12 pl-12 pr-10 bg-md-surface-container rounded-full border border-md-outline/10 focus:outline-none focus:ring-2 focus:ring-md-primary/50 text-md-on-background placeholder:text-md-on-surface-variant/50 transition-all font-medium"
+          />
+          {searchTerm && (
+            <button
+              onClick={() => setSearchTerm('')}
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-md-on-surface-variant hover:text-md-on-background transition-colors"
+              aria-label="Clear search"
+            >
+              <X size={16} />
+            </button>
+          )}
+        </div>
+
+        {/* Filters and Exports */}
+        <div className="flex flex-wrap items-center gap-4">
           {/* Category filter */}
-          <div className="flex items-center gap-1 bg-md-surface-container-low border border-md-outline/10 p-1 rounded-full shadow-sm">
+          <div className="flex items-center gap-1 bg-md-surface-container border border-md-outline/10 p-1 rounded-full">
             {['All', 'Primary', 'Secondary'].map((cat) => (
               <button
                 key={cat}
                 onClick={() => { setSelectedCategory(cat); setPage(0); }}
-                className={`px-4 py-1.5 rounded-full text-sm font-bold tracking-wide transition-colors ${
+                className={`px-4 py-1.5 rounded-full text-xs sm:text-sm font-bold tracking-wide transition-colors ${
                   selectedCategory === cat
                     ? 'bg-md-primary text-md-on-primary shadow-sm'
-                    : 'text-md-on-surface-variant hover:bg-md-surface-container'
+                    : 'text-md-on-surface-variant hover:bg-md-surface-container-low'
                 }`}
               >
                 {cat === 'All' ? 'Both' : cat}
@@ -658,53 +694,28 @@ export default function AdminSchoolsPage() {
             ))}
           </div>
 
-          <Button
-            onClick={() => setMergeOpen(true)}
-            variant="outline"
-            className="gap-2 shadow-sm font-semibold border-amber-300 text-amber-700 hover:bg-amber-50"
-          >
-            <GitMerge size={18} /> Merge Duplicates
-          </Button>
-          <div className="flex items-center gap-1 bg-md-surface-container-low border border-md-outline/10 p-1.5 rounded-full shadow-sm">
-            <button onClick={() => setExportFormat('csv')}  className={`px-4 py-1.5 rounded-full text-sm font-bold tracking-wide transition-colors ${exportFormat === 'csv'  ? 'bg-md-primary text-md-on-primary shadow-sm' : 'text-md-on-surface-variant hover:bg-md-surface-container'}`}>CSV</button>
-            <button onClick={() => setExportFormat('xlsx')} className={`px-4 py-1.5 rounded-full text-sm font-bold tracking-wide transition-colors ${exportFormat === 'xlsx' ? 'bg-md-primary text-md-on-primary shadow-sm' : 'text-md-on-surface-variant hover:bg-md-surface-container'}`}>Excel</button>
-            <button onClick={() => setExportFormat('docx')} className={`px-4 py-1.5 rounded-full text-sm font-bold tracking-wide transition-colors ${exportFormat === 'docx' ? 'bg-md-primary text-md-on-primary shadow-sm' : 'text-md-on-surface-variant hover:bg-md-surface-container'}`}>Word</button>
+          {/* Export Toggles & Trigger */}
+          <div className="flex items-center gap-3 flex-wrap">
+            <div className="flex items-center gap-1 bg-md-surface-container border border-md-outline/10 p-1 rounded-full">
+              <button onClick={() => setExportFormat('csv')}  className={`px-3 sm:px-4 py-1.5 rounded-full text-xs sm:text-sm font-bold tracking-wide transition-colors ${exportFormat === 'csv'  ? 'bg-md-primary text-md-on-primary shadow-sm' : 'text-md-on-surface-variant hover:bg-md-surface-container-low'}`}>CSV</button>
+              <button onClick={() => setExportFormat('xlsx')} className={`px-3 sm:px-4 py-1.5 rounded-full text-xs sm:text-sm font-bold tracking-wide transition-colors ${exportFormat === 'xlsx' ? 'bg-md-primary text-md-on-primary shadow-sm' : 'text-md-on-surface-variant hover:bg-md-surface-container-low'}`}>Excel</button>
+              <button onClick={() => setExportFormat('docx')} className={`px-3 sm:px-4 py-1.5 rounded-full text-xs sm:text-sm font-bold tracking-wide transition-colors ${exportFormat === 'docx' ? 'bg-md-primary text-md-on-primary shadow-sm' : 'text-md-on-surface-variant hover:bg-md-surface-container-low'}`}>Word</button>
+            </div>
+            <Button onClick={handleExportSchools} variant="outline" className="gap-2 shadow-sm font-semibold h-11 rounded-full whitespace-nowrap" disabled={loading || totalCount === 0}>
+              <Download size={16} /> Export as {exportFormat.toUpperCase()}
+            </Button>
           </div>
-          <Button onClick={handleExportSchools} variant="outline" className="gap-2 shadow-sm font-semibold" disabled={loading || totalCount === 0}>
-            <Download size={18} /> Export as {exportFormat.toUpperCase()}
-          </Button>
         </div>
       </div>
 
       {/* Page info */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 px-2">
         <p className="text-sm text-md-on-surface-variant font-medium">
           {loading ? 'Loading…' : `Showing ${schools.length} of ${totalCount} school${totalCount !== 1 ? 's' : ''}${selectedCategory !== 'All' ? ` · ${selectedCategory}` : ''}${debouncedSearch ? ` matching "${debouncedSearch}"` : ''}`}
         </p>
-        <span className="text-sm text-md-on-surface-variant font-medium">
+        <span className="text-sm text-md-on-surface-variant font-medium bg-md-surface-container-low border border-md-outline/10 px-3 py-1 rounded-full">
           Page {page + 1} of {pageCount}
         </span>
-      </div>
-
-      {/* Search bar */}
-      <div className="relative max-w-md">
-        <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-md-on-surface-variant pointer-events-none" />
-        <input
-          type="text"
-          placeholder="Search by school name…"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full h-12 pl-12 pr-4 bg-md-surface-container rounded-full border border-md-outline/10 focus:outline-none focus:ring-2 focus:ring-md-primary/50 text-md-on-background placeholder:text-md-on-surface-variant/50 transition-all font-medium"
-        />
-        {searchTerm && (
-          <button
-            onClick={() => setSearchTerm('')}
-            className="absolute right-4 top-1/2 -translate-y-1/2 text-md-on-surface-variant hover:text-md-on-background transition-colors"
-            aria-label="Clear search"
-          >
-            <X size={16} />
-          </button>
-        )}
       </div>
 
       <div className="grid grid-cols-1 gap-8">
