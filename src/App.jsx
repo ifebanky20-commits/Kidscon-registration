@@ -11,6 +11,7 @@ import AdminStudentsPage from './pages/AdminStudentsPage';
 import AdminExportPage from './pages/AdminExportPage';
 import AdminEventsPage from './pages/AdminEventsPage';
 import AdminAnalysisPage from './pages/AdminAnalysisPage';
+import AdminVerifiedSchoolsPage from './pages/AdminVerifiedSchoolsPage';
 import PrintLayoutPage from './pages/PrintLayoutPage';
 import AdminLoginPage from './pages/AdminLoginPage';
 import ProtectedRoute from './components/layout/ProtectedRoute';
@@ -44,6 +45,7 @@ function App() {
         <Route path="export" element={<AdminExportPage />} />
         <Route path="events" element={<AdminEventsPage />} />
         <Route path="analysis" element={<AdminAnalysisPage />} />
+        <Route path="verified" element={<AdminVerifiedSchoolsPage />} />
       </Route>
 
       {/* Standalone Prints */}

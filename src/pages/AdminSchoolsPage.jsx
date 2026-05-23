@@ -6,7 +6,7 @@ import { supabase } from '../lib/supabase';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/Table';
 import { Button } from '../components/ui/Button';
 import Pagination from '../components/ui/Pagination';
-import { School, Trash2, ChevronRight, Download, GitMerge, X, CheckCircle2, AlertTriangle, MapPin, User, Phone, Users, ChevronDown, ChevronUp, Search, CalendarDays } from 'lucide-react';
+import { School, Trash2, ChevronRight, Download, GitMerge, X, CheckCircle2, AlertTriangle, MapPin, User, Phone, Users, ChevronDown, ChevronUp, Search, CalendarDays, ShieldCheck, ShieldOff } from 'lucide-react';
 import { useEvent } from '../context/EventContext';
 
 const PAGE_SIZE = 10;
@@ -482,6 +482,38 @@ export default function AdminSchoolsPage() {
   const [totalCount, setTotalCount] = useState(0);
   const pageCount = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
 
+  // Verified schools — names stored in available_schools table
+  const [verifiedNames, setVerifiedNames] = useState(new Set());
+  const [verifyingId, setVerifyingId] = useState(null); // school id currently being toggled
+
+  const fetchVerifiedSchools = useCallback(async () => {
+    const { data } = await supabase.from('available_schools').select('id, name');
+    if (data) setVerifiedNames(new Map(data.map(s => [s.name.trim().toLowerCase(), s.id])));
+  }, []);
+
+  useEffect(() => { fetchVerifiedSchools(); }, [fetchVerifiedSchools]);
+
+  const handleVerifySchool = async (e, school) => {
+    e.stopPropagation();
+    const key = school.name.trim().toLowerCase();
+    const existingId = verifiedNames instanceof Map ? verifiedNames.get(key) : undefined;
+    setVerifyingId(school.id);
+    try {
+      if (existingId) {
+        // Unverify — remove from available_schools
+        await supabase.from('available_schools').delete().eq('id', existingId);
+      } else {
+        // Verify — add to available_schools
+        await supabase.from('available_schools').insert({ name: school.name.trim() });
+      }
+      await fetchVerifiedSchools();
+    } catch (err) {
+      console.error('Verification toggle failed:', err);
+    } finally {
+      setVerifyingId(null);
+    }
+  };
+
   // Debounce search — reset to page 0 on new query
   useEffect(() => {
     const t = setTimeout(() => {
@@ -693,66 +725,111 @@ export default function AdminSchoolsPage() {
                       <TableHead className="py-5 font-semibold text-center">Students</TableHead>
                       <TableHead className="py-5 font-semibold text-center">Teachers</TableHead>
                       <TableHead className="py-5 font-semibold">Date Registered</TableHead>
+                      <TableHead className="py-5 font-semibold text-center">Verified</TableHead>
                       <TableHead className="py-5 text-right font-semibold sticky right-0 bg-md-surface-container/90 backdrop-blur-md">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {schools.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={7} className="text-center py-10 text-md-on-surface-variant font-medium">
+                        <TableCell colSpan={8} className="text-center py-10 text-md-on-surface-variant font-medium">
                           {searchTerm ? `No schools found matching "${searchTerm}".` : 'No schools have registered yet.'}
                         </TableCell>
                       </TableRow>
                     ) : (
-                      schools.map((school) => (
-                        <TableRow
-                          key={school.id}
-                          className="group hover:bg-md-surface-container transition-colors border-md-outline/5 cursor-pointer"
-                          onClick={() => navigate(`/admin/school/${school.id}`)}
-                        >
-                          <TableCell className="font-bold text-md-on-background py-5 flex items-center gap-3">
-                            <School size={16} className="text-md-on-surface-variant/50" />
-                            {school.name}
-                          </TableCell>
-                          <TableCell className="text-md-on-surface-variant font-medium py-5">{school.category || '-'}</TableCell>
-                          <TableCell className="text-md-on-surface-variant py-5">
-                            <div className="flex flex-col">
-                              <span className="font-medium text-md-on-background">{school.contact_person || '-'}</span>
-                              <span className="text-xs">{school.phone || '-'}</span>
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-center py-5">
-                            <span className="bg-md-primary/10 text-md-primary px-3 py-1 rounded-full text-sm font-bold tracking-wide">
-                              {school.students[0]?.count || 0}
-                            </span>
-                          </TableCell>
-                          <TableCell className="text-center py-5">
-                            <span className="bg-md-tertiary/10 text-md-tertiary px-3 py-1 rounded-full text-sm font-bold tracking-wide">
-                              {school.teachers[0]?.count || 0}
-                            </span>
-                          </TableCell>
-                          <TableCell className="text-md-on-surface-variant font-medium py-5">
-                            {new Date(school.created_at).toLocaleDateString()}
-                          </TableCell>
-                          <TableCell className="text-right py-3 sticky right-0 group-hover:bg-md-surface-container bg-md-surface-container-low transition-colors duration-200">
-                            <div className="flex items-center justify-end gap-2">
-                              <Button variant="ghost" size="sm" asChild className="opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity bg-md-secondary-container/50 hover:bg-md-secondary-container">
-                                <Link to={`/admin/school/${school.id}`} className="gap-2" onClick={(e) => e.stopPropagation()}>
-                                  Details <ChevronRight size={16} />
-                                </Link>
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={(e) => handleDeleteSchool(e, school)}
-                                className="text-md-error hover:bg-md-error/10 hover:text-md-error opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
+                      schools.map((school) => {
+                        const isVerified = verifiedNames instanceof Map && verifiedNames.has(school.name.trim().toLowerCase());
+                        const isVerifying = verifyingId === school.id;
+                        return (
+                          <TableRow
+                            key={school.id}
+                            className="group hover:bg-md-surface-container transition-colors border-md-outline/5 cursor-pointer"
+                            onClick={() => navigate(`/admin/school/${school.id}`)}
+                          >
+                            <TableCell className="font-bold text-md-on-background py-5">
+                              <div className="flex items-center gap-2">
+                                <School size={16} className="text-md-on-surface-variant/50 shrink-0" />
+                                <span>{school.name}</span>
+                                {isVerified && (
+                                  <span className="inline-flex items-center gap-1 bg-emerald-100 text-emerald-700 text-[10px] font-bold px-2 py-0.5 rounded-full tracking-wide shrink-0">
+                                    <ShieldCheck size={10} /> Verified
+                                  </span>
+                                )}
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-md-on-surface-variant font-medium py-5">{school.category || '-'}</TableCell>
+                            <TableCell className="text-md-on-surface-variant py-5">
+                              <div className="flex flex-col">
+                                <span className="font-medium text-md-on-background">{school.contact_person || '-'}</span>
+                                <span className="text-xs">{school.phone || '-'}</span>
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-center py-5">
+                              <span className="bg-md-primary/10 text-md-primary px-3 py-1 rounded-full text-sm font-bold tracking-wide">
+                                {school.students[0]?.count || 0}
+                              </span>
+                            </TableCell>
+                            <TableCell className="text-center py-5">
+                              <span className="bg-md-tertiary/10 text-md-tertiary px-3 py-1 rounded-full text-sm font-bold tracking-wide">
+                                {school.teachers[0]?.count || 0}
+                              </span>
+                            </TableCell>
+                            <TableCell className="text-md-on-surface-variant font-medium py-5">
+                              {new Date(school.created_at).toLocaleDateString()}
+                            </TableCell>
+                            <TableCell className="text-center py-5">
+                              <button
+                                onClick={(e) => handleVerifySchool(e, school)}
+                                disabled={isVerifying}
+                                title={isVerified ? 'Click to unverify this school' : 'Click to verify this school'}
+                                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold tracking-wide transition-all duration-200 border ${
+                                  isVerifying
+                                    ? 'bg-md-surface-container text-md-on-surface-variant border-md-outline/20 cursor-wait'
+                                    : isVerified
+                                    ? 'bg-emerald-100 text-emerald-700 border-emerald-200 hover:bg-red-50 hover:text-red-600 hover:border-red-200 group/vbtn'
+                                    : 'bg-md-surface-container text-md-on-surface-variant border-md-outline/20 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-200'
+                                }`}
                               >
-                                <Trash2 size={16} />
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))
+                                {isVerifying ? (
+                                  <>
+                                    <div className="w-3 h-3 border-2 border-current/30 border-t-current rounded-full animate-spin" />
+                                    <span>Saving…</span>
+                                  </>
+                                ) : isVerified ? (
+                                  <>
+                                    <ShieldCheck size={12} className="group-hover/vbtn:hidden" />
+                                    <ShieldOff size={12} className="hidden group-hover/vbtn:block" />
+                                    <span className="group-hover/vbtn:hidden">Verified</span>
+                                    <span className="hidden group-hover/vbtn:block">Unverify</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <ShieldCheck size={12} />
+                                    <span>Verify</span>
+                                  </>
+                                )}
+                              </button>
+                            </TableCell>
+                            <TableCell className="text-right py-3 sticky right-0 group-hover:bg-md-surface-container bg-md-surface-container-low transition-colors duration-200">
+                              <div className="flex items-center justify-end gap-2">
+                                <Button variant="ghost" size="sm" asChild className="opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity bg-md-secondary-container/50 hover:bg-md-secondary-container">
+                                  <Link to={`/admin/school/${school.id}`} className="gap-2" onClick={(e) => e.stopPropagation()}>
+                                    Details <ChevronRight size={16} />
+                                  </Link>
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={(e) => handleDeleteSchool(e, school)}
+                                  className="text-md-error hover:bg-md-error/10 hover:text-md-error opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
+                                >
+                                  <Trash2 size={16} />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })
                     )}
                   </TableBody>
                 </Table>

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Outlet, NavLink, Link, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, School, Users, Download, LogOut, Menu, X, CalendarDays, BarChart3 } from 'lucide-react';
+import { LayoutDashboard, School, Users, Download, LogOut, Menu, X, CalendarDays, BarChart3, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import logo from '../assets/logo.jpeg';
 
@@ -15,12 +15,13 @@ export default function AdminLayout() {
   };
 
   const navItems = [
-    { label: 'Dashboard',  icon: LayoutDashboard, path: '/admin',         exact: true },
-    { label: 'Schools',    icon: School,          path: '/admin/schools'             },
-    { label: 'Students',   icon: Users,           path: '/admin/students'            },
-    { label: 'Export Data',icon: Download,        path: '/admin/export'              },
-    { label: 'Analytics',  icon: BarChart3,       path: '/admin/analysis'            },
-    { label: 'Events',     icon: CalendarDays,    path: '/admin/events'              },
+    { label: 'Dashboard',        icon: LayoutDashboard, path: '/admin',          exact: true },
+    { label: 'Schools',           icon: School,          path: '/admin/schools'              },
+    { label: 'Verified Schools',  icon: ShieldCheck,     path: '/admin/verified'             },
+    { label: 'Students',          icon: Users,           path: '/admin/students'             },
+    { label: 'Export Data',       icon: Download,        path: '/admin/export'               },
+    { label: 'Analytics',         icon: BarChart3,       path: '/admin/analysis'             },
+    { label: 'Events',            icon: CalendarDays,    path: '/admin/events'               },
   ];
 
   const NavContent = ({ onClickItem }) => (

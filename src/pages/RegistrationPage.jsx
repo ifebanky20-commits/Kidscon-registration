@@ -10,6 +10,8 @@ import { Modal } from '../components/ui/Modal';
 import { Plus, Trash2, Upload, BookOpen, Users, UserPlus, CheckCircle, CheckCircle2, School, AlertCircle, FileCheck, ShieldCheck, MapPin, CalendarDays, ArrowLeft } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
+const MAX_STUDENTS = 20;
+
 export default function RegistrationPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -129,7 +131,16 @@ export default function RegistrationPage() {
         setStudents(prev => {
           const existing = new Set(prev.map(s => s.name.toLowerCase()));
           const newOnes = parsed.filter(s => !existing.has(s.name.toLowerCase()));
-          return [...prev, ...newOnes];
+          const available = MAX_STUDENTS - prev.length;
+          if (available <= 0) {
+            setUploadError(`Maximum of ${MAX_STUDENTS} students reached. No new students were added.`);
+            return prev;
+          }
+          const trimmed = newOnes.slice(0, available);
+          if (trimmed.length < newOnes.length) {
+            setUploadError(`Only ${trimmed.length} student(s) added — maximum of ${MAX_STUDENTS} students reached.`);
+          }
+          return [...prev, ...trimmed];
         });
 
         setUploadCount(parsed.length);
@@ -158,9 +169,12 @@ export default function RegistrationPage() {
     // Step 3 (Teachers) is optional
     return false;
   };
+
+  const isAtStudentLimit = students.length >= MAX_STUDENTS;
   
   const handleAddStudent = () => {
     if (newStudent.name && newStudent.class) {
+      if (students.length >= MAX_STUDENTS) return;
       setStudents([...students, { ...newStudent, id: Date.now() }]);
       setNewStudent({ name: '', gender: 'Male', class: '' });
       setIsStudentModalOpen(false);
@@ -423,16 +437,27 @@ export default function RegistrationPage() {
               />
 
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-md-surface-container-low p-4 rounded-2xl">
-                <p className="text-md-on-surface-variant font-medium ml-2">Total Students: <span className="font-bold text-2xl text-md-primary ml-2">{students.length}</span></p>
+                <div className="ml-2">
+                  <p className="text-md-on-surface-variant font-medium">Total Students: <span className={`font-bold text-2xl ml-2 ${isAtStudentLimit ? 'text-md-error' : 'text-md-primary'}`}>{students.length}</span><span className="text-md-on-surface-variant/60 text-base font-medium"> / {MAX_STUDENTS}</span></p>
+                  {isAtStudentLimit && (
+                    <p className="text-xs font-semibold text-md-error mt-1 flex items-center gap-1"><AlertCircle size={12} /> Maximum of {MAX_STUDENTS} students reached</p>
+                  )}
+                </div>
                 <div className="flex gap-2 w-full sm:w-auto">
-                  <Button variant="outline" className="hidden sm:flex gap-2 flex-1" onClick={() => { setUploadError(''); setUploadCount(null); fileInputRef.current?.click(); }}>
+                  <Button variant="outline" className="hidden sm:flex gap-2 flex-1" disabled={isAtStudentLimit} onClick={() => { setUploadError(''); setUploadCount(null); fileInputRef.current?.click(); }}>
                     <Upload size={18} /> Upload Excel
                   </Button>
-                  <Button variant="secondary" onClick={() => setIsStudentModalOpen(true)} className="gap-2 flex-1 md-elevation-1 shadow-md">
+                  <Button variant="secondary" onClick={() => setIsStudentModalOpen(true)} disabled={isAtStudentLimit} className="gap-2 flex-1 md-elevation-1 shadow-md">
                     <Plus size={18} /> Add Student
                   </Button>
                 </div>
               </div>
+
+              {isAtStudentLimit && (
+                <div className="flex items-center gap-2 bg-md-error/10 text-md-error p-3 rounded-xl text-sm font-semibold">
+                  <AlertCircle size={16} /> You've reached the maximum of {MAX_STUDENTS} students allowed per registration.
+                </div>
+              )}
 
               {/* Upload feedback */}
               {uploadCount !== null && !uploadError && (
