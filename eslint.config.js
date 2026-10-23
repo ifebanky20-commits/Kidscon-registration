@@ -31,7 +31,7 @@ export default defineConfig([
   },
   {
     files: ['src/**/*.tsx'],
-    ignores: ['src/features/registration/components/pdf/**/*.tsx'],
+    ignores: ['src/components/registration/pdf/**/*.tsx'],
     rules: {
       'no-restricted-syntax': [
         'error',

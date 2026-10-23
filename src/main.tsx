@@ -1,9 +1,9 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
-import App from "@/app/App";
-import { AppProviders } from "@/app/providers/AppProviders";
-import { AppToaster } from "@/shared/components/ui/AppToaster";
+import App from "@/App";
+import { AppProviders } from "@/providers/AppProviders";
+import { AppToaster } from "@/components/ui/AppToaster";
 import "@/styles/index.css";
 
 const rootElement = document.getElementById("root");
