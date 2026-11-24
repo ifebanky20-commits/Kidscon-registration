@@ -15,18 +15,28 @@
     "allowImportingTsExtensions": true,
     "resolveJsonModule": true,
     "noEmit": true,
-    "types": [
-      "vite/client",
-      "node"
-    ],
     "paths": {
       "@/*": [
         "./src/*"
       ]
-    }
+    },
+    "isolatedModules": true,
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    "incremental": true,
+    "allowJs": true
   },
   "include": [
+    "next-env.d.ts",
     "src",
-    "vite.config.ts"
+    "next.config.ts",
+    ".next/types/**/*.ts",
+    ".next/dev/types/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules"
   ]
 }

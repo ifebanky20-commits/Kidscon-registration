@@ -8,8 +8,9 @@ export function Skeleton({
 }: React.ComponentPropsWithoutRef<"div">) {
   return (
     <div
+      aria-hidden="true"
       className={cn(
-        "animate-pulse rounded-md bg-md-surface-container-low/60 dark:bg-md-surface-container/60",
+        "motion-safe:animate-pulse rounded-md bg-brand-line/70",
         className,
       )}
       {...props}
